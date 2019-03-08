@@ -2,6 +2,7 @@
 import paho.mqtt.client as mqtt
 import threading
 import time
+import re
 
 class MQTTclient(threading.Thread):
     def __init__(self, brokerAddress, username, password, syncEvents, dataProxy):
@@ -9,8 +10,8 @@ class MQTTclient(threading.Thread):
         self.username = username
         self.password = password
         self.client = mqtt.Client(client_id = "MQTT-Modena", clean_session = True)
-        self.client.on_subscribe = self.subscribeCallback
-        self.client.on_message = self.messageCallback
+        self.client.on_subscribe = self.__subscribeCallback
+        self.client.on_message = self.__messageCallback
         self.client.username_pw_set(username = self.username, password = self.password)
         self.keepListening = True
         self.syncEvents = syncEvents
@@ -44,10 +45,11 @@ class MQTTclient(threading.Thread):
         self.keepListening = False
 
 
-    def messageCallback(self, client, userdata, message):
-        ####
+    def __messageCallback(self, client, userdata, message):
+        #client = #fare regex che legge il numero del sensore da client
 
-    def subscribeCallback(self, client, userdata, mid, granted_qos):
+
+    def __subscribeCallback(self, client, userdata, mid, granted_qos):
         if self.subscribeResult[1] == mid:
             self.subscribeResult = True
         else:
@@ -56,5 +58,3 @@ class MQTTclient(threading.Thread):
 if __name__ == "__main__":
     print("Error: This program must be used as a module")
     quit()
-#"broker.shiftr.io"
-#username="calvino00",password="0123456789"

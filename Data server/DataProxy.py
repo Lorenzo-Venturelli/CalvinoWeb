@@ -35,11 +35,12 @@ class dataProxy():
                     self.__notifyUpdate(sensorNumber = sensorNumber, dataType = dataType, dataValue = dataValue)
                     return (True, 0)
 
-    def __notifyUpdate(sensorNumber, dataType, dataValue):
+    def __notifyUpdate(self, sensorNumber, dataType, dataValue):
         self.lock.acquire()
         self.proxy = [sensorNumber, dataType, dataValue]
         self.lock.release()
         self.syncEvents.set()
+        return
 
 
 if __name__ == "__main__":
