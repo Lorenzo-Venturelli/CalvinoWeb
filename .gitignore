@@ -112,3 +112,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+Data server/test.py
+Data server/.vscode/settings.json
