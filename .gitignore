@@ -114,3 +114,4 @@ dmypy.json
 .pyre/
 Data server/test.py
 Data server/.vscode/settings.json
+Data server/.vscode/sftp.json

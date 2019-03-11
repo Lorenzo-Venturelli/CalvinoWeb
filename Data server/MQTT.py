@@ -1,5 +1,6 @@
 #! /usr/bin/python
 import paho.mqtt.client as mqtt
+import DataProxy
 import threading
 import time
 import re
@@ -46,8 +47,16 @@ class MQTTclient(threading.Thread):
 
 
     def __messageCallback(self, client, userdata, message):
-        #client = #fare regex che legge il numero del sensore da client
-
+        match = re.match(pattern = r"[a-z]*[\-]*([0-9][0-9])\/([a-z]*", string = str(message.topic))
+        sensorNumber = str(match.group(1))
+        dataType = str(match.group(2))
+        dataValue = str(message.payload.decode("utf-8"))
+        result = self.dataProxy.lastDataUpdate(sensorNumber = sensorNumber, dataType = dataType, dataValue = dataValue)
+        if result[0] == True:
+            return
+        else:
+            print("Error: The received data are not valid")
+        
 
     def __subscribeCallback(self, client, userdata, mid, granted_qos):
         if self.subscribeResult[1] == mid:
