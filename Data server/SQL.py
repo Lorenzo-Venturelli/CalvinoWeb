@@ -13,7 +13,7 @@ class CalvinoDB():
     range_end = (10**n)-1
     return randint(range_start, range_end)
 
-    def insert(self, tipo, sensore, valore):
+    def insert(self, tipo, sensore, valore): #2019-03-12 11:57:44.937819
         try:
             self.db.query("INSERT INTO %s VALUES (%s, %s, %s, %s);", (tipo, self.random_N(16), sensore, datetime.datetime.utcnow() + datetime.timedelta(hours=+1), valore))
         except Exception:
@@ -21,4 +21,5 @@ class CalvinoDB():
         return True
 
     def request(self, dataI, dataF, sensore = None, tipo = None):
-        if (sensore)
+        if (sensore == None):
+            if (tipo == None):
