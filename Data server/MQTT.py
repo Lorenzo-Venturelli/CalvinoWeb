@@ -33,12 +33,11 @@ class MQTTclient(threading.Thread):
         if self.subscribeResult == False:
             self.syncEvents[1].set()
             return
-        else:
-            self.syncEvents[0].set()
+            
+        self.syncEvents[0].set()
 
-            while self.keepListening == True:
-                time.sleep(0.1)
-
+        while self.keepListening == True:
+            time.sleep(0.1)
             self.client.loop_stop()
             self.client.disconnect()
 

@@ -7,7 +7,7 @@ class MySQL():
                      user=username,
                      password=password,
                      db=database,
-                     cursorclass=pymysql.cursors.DictCursor);
+                     cursorclass=pymysql.cursors.DictCursor)
 
         print("Connected to MySQL database")
         self.pool = ThreadPoolExecutor(100)

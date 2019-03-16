@@ -4,6 +4,7 @@ import time
 import json
 import DataProxy
 import MQTT
+import SQL
 
 if __name__ == "__main__":
     mqttSyncEvent = [threading.Event(), threading.Event()]
@@ -31,5 +32,14 @@ if __name__ == "__main__":
         print('''Error: No password is present in settings file! Assuming "0123456789"''')
         password = "0123456789"
 
+    sqlHandler = SQL.CalvinoDB(databaseAddress = brkAdr, databaseName = "CalvinoDB", user = username, password = password)
     dataProxyHandler = DataProxy.dataProxy(SQLProxy = None, syncEvents = dataProxySyncEvent, lock = dataProxyLock, proxy = lastData)
     mqttHandler = MQTT.MQTTclient(brokerAddress = brkAdr, username = username, password = password, syncEvents = mqttSyncEvent, dataProxy = dataProxyHandler)
+
+    mqttSyncEvent[0].wait(timeout = None)
+    if mqttSyncEvent[1].is_set() == True:
+        print("Fatal error: MQTT connection initialization error")
+        quit()
+    else:
+        print("MQTT connection initialized")
+        
