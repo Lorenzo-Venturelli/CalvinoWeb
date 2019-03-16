@@ -1,6 +1,8 @@
 import pymysql
+import pymssql
 from concurrent.futures import ThreadPoolExecutor
 
+# This class implement PyMySQL, for MySQL Server
 class MySQL():
     def __init__(self, host, database, username, password):
         self.db = pymysql.connect(host=host,
@@ -22,4 +24,23 @@ class MySQL():
         self.db.commit()
         return self.cursor.fetchall()
 
-#db = MySQL(indirizzo, nome_db, nome_utente, password)
+# This class implement PyMsSQL, for Microsoft SQL Server
+class MsSQL():
+    def __init__(self, server, username, password, database):
+        self.db = pymssql.connect(server = str(server), user = str(username), password = str(password), database = str(database))
+        self.db.autocommit(True)
+        self.pool = ThreadPoolExecutor(1000)
+        self.cursor = self.db.cursor()
+
+    def query(self, query, args = tuple()):
+        try:
+            self.cursor.execute(query)
+            self.db.commit()
+        except Exception as reason:
+            print(reason)
+
+        try:
+            result = self.cursor.fetchall()
+        except Exception:
+            result = None
+        return result

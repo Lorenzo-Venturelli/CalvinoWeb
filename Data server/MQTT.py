@@ -18,6 +18,7 @@ class MQTTclient(threading.Thread):
         self.syncEvents = syncEvents
         self.subscribeResult = None
         self.dataProxy = dataProxy
+        self.dataProxyLock = threading.Lock()
         threading.Thread.__init__(self, name = "MQTT Thread", daemon = False)
 
     def run(self):
@@ -38,23 +39,37 @@ class MQTTclient(threading.Thread):
 
         while self.keepListening == True:
             time.sleep(0.1)
-            self.client.loop_stop()
-            self.client.disconnect()
+        
+        self.client.loop_stop()
+        self.client.disconnect()
 
     def stop(self):
         self.keepListening = False
 
 
     def __messageCallback(self, client, userdata, message):
-        match = re.match(pattern = r"[a-z]*[\-]*([0-9][0-9])\/([a-z]*", string = str(message.topic))
-        sensorNumber = str(match.group(1))
-        dataType = str(match.group(2))
-        dataValue = str(message.payload.decode("utf-8"))
-        result = self.dataProxy.lastDataUpdate(sensorNumber = sensorNumber, dataType = dataType, dataValue = dataValue)
-        if result[0] == True:
-            return
+        try:
+            match = re.match(pattern = r"\/[a-z]*\-([0-9][0-9])\/([a-z]*)", string = str(message.topic))
+        except Exception as reason:
+            print("Error: Regex error occurred")
+            print("Reason : " + str(reason))
+
+        if match == None:
+            print("Error: Regex could not match message contenent")
         else:
-            print("Error: The received data are not valid")
+            sensorNumber = str(match.group(1))
+            dataType = str(match.group(2))
+            dataValue = str(message.payload.decode("utf-8"))
+            try:
+                result = self.dataProxy.lastDataUpdate(sensorNumber = int(sensorNumber), dataType = dataType, dataValue = dataValue)
+            except Exception as reason:
+                print(reason)
+            if result[0] == True:
+                self.syncEvents[0].set()
+                return
+            else:
+                print("Error: MIstero")
+                return
         
 
     def __subscribeCallback(self, client, userdata, mid, granted_qos):

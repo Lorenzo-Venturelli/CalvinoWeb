@@ -1,6 +1,7 @@
 import threading
 import socket
 import time
+import SQL
 
 class dataProxy():
     def __init__(self, SQLProxy, syncEvents, lock, proxy):
@@ -12,36 +13,42 @@ class dataProxy():
 
         for i in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
             self.lastData[i] = dict()
-            self.lastData[1]['pressione'] = None
-            self.lastData[1]['temperatura'] = None
-            self.lastData[1]['altitudine'] = None
-            self.lastData[1]['luce'] = None
+            self.lastData[i]['pressione'] = None
+            self.lastData[i]['temperatura'] = None
+            self.lastData[i]['altitudine'] = None
+            self.lastData[i]['luce'] = None
 
-    def lastDataUpdate(self, sensorNumber, dataType, dataValue):
-        if sensorNumber not in self.lastData.keys():
-            print("Error: Sensor do not exist")
-            return (False, 1)
-        else:
-            if dataType not in self.lastData[sensorNumber].keys():
+    def lastDataUpdate(self, sensorNumber, dataType, dataValue):   
+        if sensorNumber in self.lastData.keys():
+            if str(dataType) not in self.lastData[sensorNumber].keys():
                 print("Error: Data type do not exist for sensor " + str(sensorNumber))
                 return (False, 2)
             else:
                 self.lastData[sensorNumber][dataType] = dataValue
-                #result = self.__DBupdate(sensorNumber, dataType, dataValue)
+                result = self.__DBinsert(sensorNumber = sensorNumber, dataType = dataType, dataValue = dataValue)
                 if result == False:
                     print("Error: SQL database error, this piece of data is lost")
                     return (False, 3)
                 else:
                     self.__notifyUpdate(sensorNumber = sensorNumber, dataType = dataType, dataValue = dataValue)
+                    while self.syncEvents.isSet() == True:
+                        pass
+                    self.syncEvents.set()
                     return (True, 0)
+        else:
+            print("Error: Sensor do not exist")
+            return (False, 1)
 
     def __notifyUpdate(self, sensorNumber, dataType, dataValue):
-        self.lock.acquire()
+        self.proxyLock.acquire()
         self.proxy = [sensorNumber, dataType, dataValue]
-        self.lock.release()
+        self.proxyLock.release()
         self.syncEvents.set()
         return
 
+    def __DBinsert(self, sensorNumber, dataType, dataValue):
+        result = self.SQLProxy.insert(tipo = dataType, sensore = sensorNumber, valore = dataValue)
+        return result
 
 if __name__ == "__main__":
     print("Error: This program must be used as a module")
