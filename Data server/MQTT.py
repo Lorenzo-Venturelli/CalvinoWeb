@@ -60,15 +60,19 @@ class MQTTclient(threading.Thread):
             sensorNumber = str(match.group(1))
             dataType = str(match.group(2))
             dataValue = str(message.payload.decode("utf-8"))
-            try:
-                result = self.dataProxy.lastDataUpdate(sensorNumber = int(sensorNumber), dataType = dataType, dataValue = dataValue)
-            except Exception as reason:
-                print(reason)
+            result = self.dataProxy.lastDataUpdate(sensorNumber = int(sensorNumber), dataType = dataType, dataValue = dataValue)
             if result[0] == True:
                 self.syncEvents[0].set()
                 return
             else:
-                print("Error: MIstero")
+                if result[1] == 1:
+                    print("Error: Received data for sensor " + str(sensorNumber) + " that do not exist.")
+                elif result[1] == 2:
+                    print("Error: Received data of type " + str(dataType) + " for sensor " + str(sensorNumber) + ". This sensor has not this data type")
+                elif result[1] == 3:
+                    print("Error: Unknown SQL error occured")
+
+                print("This data are lost forever")
                 return
         
 

@@ -38,9 +38,10 @@ class MsSQL():
             self.db.commit()
         except Exception as reason:
             print(reason)
+            return False
 
         try:
             result = self.cursor.fetchall()
         except Exception:
-            result = None
+            result = True
         return result

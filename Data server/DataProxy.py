@@ -21,13 +21,11 @@ class dataProxy():
     def lastDataUpdate(self, sensorNumber, dataType, dataValue):   
         if sensorNumber in self.lastData.keys():
             if str(dataType) not in self.lastData[sensorNumber].keys():
-                print("Error: Data type do not exist for sensor " + str(sensorNumber))
                 return (False, 2)
             else:
                 self.lastData[sensorNumber][dataType] = dataValue
                 result = self.__DBinsert(sensorNumber = sensorNumber, dataType = dataType, dataValue = dataValue)
                 if result == False:
-                    print("Error: SQL database error, this piece of data is lost")
                     return (False, 3)
                 else:
                     self.__notifyUpdate(sensorNumber = sensorNumber, dataType = dataType, dataValue = dataValue)
@@ -36,7 +34,6 @@ class dataProxy():
                     self.syncEvents.set()
                     return (True, 0)
         else:
-            print("Error: Sensor do not exist")
             return (False, 1)
 
     def __notifyUpdate(self, sensorNumber, dataType, dataValue):

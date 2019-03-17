@@ -6,6 +6,59 @@ import DataProxy
 import MQTT
 import SQL
 
+class DataServerAccepter(threading.Thread):
+    def __init__(self, address, port, dataProxy, dataProxyLock, dataProxySyncEvent):
+        self.serverAddress = address
+        self.serverPort = port
+        self.dataProxy = dataProxy
+        self.dataProxyLock = dataProxyLock
+        self.dataProxySyncEvent = dataProxySyncEvent
+        self.serverSocket = socket.socket(family = socket.AF_INET, type = socket.SOCK_STREAM)
+        self.running = True
+        self.connectedClient = []
+        threading.Thread.__init__(self, name = "Data Server Accepter Thread", daemon = False)
+
+    def run(self):
+        try:
+            self.serverSocket.bind((str(self.serverAddress), int(self.serverPort)))
+        except socket.error:
+            print("Fatal error: Data server accepter socket failed to bind")
+            quit()
+
+        self.serverSocket.listen(5)
+        while self.running == True:
+            try:
+                clientSocket, clientAddress = self.serverSocket.accept()
+            except socket.error():
+                print("Error: Unknown error occurred while a client tried to connect. Connection aborted")
+                clientAddress = None
+            
+            if clientAddress != None:
+                try:
+                    clientThread = DataClient(address = clientAddress, clientSocket = clientSocket, dataProxy = self.dataProxy, dataProxyLock = self.dataProxyLock, dataProxySyncEvent = self.dataProxySyncEvent)
+                    clientThread.start()
+                    self.connectedClient.append(clientThread)
+                except Exception as reason:
+                    print("Error: Unhandled error occured while creating client thread for client " + str(clientAddress[0]))
+                    print("Reason: " + str(reason))
+                    clientSocket.close()
+                    clientSocket = None
+                    clientAddress = None
+
+            
+class DataClient(threading.Thread):
+    def __init__(self, address, clientSocket, dataProxy, dataProxyLock, dataProxySyncEvent):
+        self.address = address
+        self.clientSocket = clientSocket
+        self.dataProxy = dataProxy
+        self.dataProxyLock = dataProxyLock
+        self.dataProxySyncEvent = dataProxySyncEvent
+        threading.Thread.__init__(self, name = "Data Client " + str(address[0]), daemon = True)
+    
+    def run(self):
+        while True:
+            ##
+
 if __name__ == "__main__":
     mqttSyncEvent = [threading.Event(), threading.Event()]
     dataProxySyncEvent = threading.Event()
@@ -70,11 +123,23 @@ if __name__ == "__main__":
     try:
         sqlHandler = SQL.CalvinoDB(databaseAddress = sqlAdr, databaseName = sqlName, user = sqlUsername, password = sqlPassword)
     except Exception as reason:
-        print("Error: SQL initialization error")
+        print("Fatal error: SQL initialization error")
         print("Reason: " + str(reason))
         quit()
-    dataProxyHandler = DataProxy.dataProxy(SQLProxy = sqlHandler, syncEvents = dataProxySyncEvent, lock = dataProxyLock, proxy = lastData)
-    mqttHandler = MQTT.MQTTclient(brokerAddress = brkAdr, username = brkUsername, password = brkPassword, syncEvents = mqttSyncEvent, dataProxy = dataProxyHandler)
+
+    try:
+        dataProxyHandler = DataProxy.dataProxy(SQLProxy = sqlHandler, syncEvents = dataProxySyncEvent, lock = dataProxyLock, proxy = lastData)
+    except Exception as reason:
+        print("Fatal error: Data Proxy initialization error")
+        print("Reason: " + str(reason))
+        quit()
+    
+    try:
+        mqttHandler = MQTT.MQTTclient(brokerAddress = brkAdr, username = brkUsername, password = brkPassword, syncEvents = mqttSyncEvent, dataProxy = dataProxyHandler)
+    except Exception as reason:
+        print("Fatal error: MQTT initialization error")
+        print("Reason: " + str(reason))
+        quit()
 
     mqttHandler.start()
 
