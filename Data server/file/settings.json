@@ -1,0 +1,9 @@
+{
+    "brkAdr" : "broker.shiftr.io",
+    "brkUsername" : "calvino00",
+    "brkPassword" : "0123456789",
+    "sqlAdr" : "51.145.135.119",
+    "sqlUsername" : "SA",
+    "sqlPassword" : "Fermi3f27",
+    "sqlName" : "CalvinoDB"
+}

@@ -43,6 +43,8 @@ class MQTTclient(threading.Thread):
         self.client.loop_stop()
         self.client.disconnect()
 
+        print("MQTT connection terminated")
+
     def stop(self):
         self.keepListening = False
 

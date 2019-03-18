@@ -2,6 +2,7 @@ import threading
 import socket
 import time
 import json
+import re
 import DataProxy
 import MQTT
 import SQL
@@ -15,7 +16,7 @@ class DataServerAccepter(threading.Thread):
         self.dataProxySyncEvent = dataProxySyncEvent
         self.serverSocket = socket.socket(family = socket.AF_INET, type = socket.SOCK_STREAM)
         self.running = True
-        self.connectedClient = []
+        self.connectedClient = dict()
         threading.Thread.__init__(self, name = "Data Server Accepter Thread", daemon = False)
 
     def run(self):
@@ -37,13 +38,26 @@ class DataServerAccepter(threading.Thread):
                 try:
                     clientThread = DataClient(address = clientAddress, clientSocket = clientSocket, dataProxy = self.dataProxy, dataProxyLock = self.dataProxyLock, dataProxySyncEvent = self.dataProxySyncEvent)
                     clientThread.start()
-                    self.connectedClient.append(clientThread)
+                    self.connectedClient[str(clientAddress[0])] = clientThread
                 except Exception as reason:
                     print("Error: Unhandled error occured while creating client thread for client " + str(clientAddress[0]))
                     print("Reason: " + str(reason))
                     clientSocket.close()
                     clientSocket = None
                     clientAddress = None
+                
+            self.__garbageCollector()
+    
+    def __garbageCollector(self):
+        deathClient = []
+        for client in self.connectedClient.keys():
+            if self.connectedClient[client].clientConnected == False:
+                deathClient.append(client)
+        
+        for client in deathClient:
+            del self.connectedClient[client]
+
+        return
 
             
 class DataClient(threading.Thread):
@@ -53,11 +67,29 @@ class DataClient(threading.Thread):
         self.dataProxy = dataProxy
         self.dataProxyLock = dataProxyLock
         self.dataProxySyncEvent = dataProxySyncEvent
+        self.clientConnected = True
         threading.Thread.__init__(self, name = "Data Client " + str(address[0]), daemon = True)
     
     def run(self):
-        while True:
-            ##
+        while self.clientConnected == True:
+            request = self.clientSocket.recv(1024)
+            if request != None or request != 0 or request != ' ':
+                try:
+                    request = json.load(request)
+                except json.JSONDecodeError:
+                    print("Error: Received corrupted request from host " + str(self.address[0]))
+                    continue
+                
+                ## Funzione di richiesta SQL
+
+            else:
+                self.disconnect()
+        
+        print("Client " + str(self.address[0]) + " disconnected")
+
+    def disconnect(self):
+        self.clientConnected = False
+        return
 
 if __name__ == "__main__":
     mqttSyncEvent = [threading.Event(), threading.Event()]
@@ -81,43 +113,43 @@ if __name__ == "__main__":
     if "brkAdr" in settings.keys():
         brkAdr = settings["brkAdr"]
     else:
-        print('''Error: No broker address is present in settings file! Assuming "broker.shiftr.io"''')
+        print('''Error: No broker address is present in settings file! Assuming standard''')
         brkAdr = "broker.shiftr.io"
 
     if "brkUsername" in settings.keys():
-        brkUsername = settings["username"]
+        brkUsername = settings["brkUsername"]
     else:
-        print('''Error: No broker username is present in settings file! Assuming "calvino00"''')
+        print('''Error: No broker username is present in settings file! Assuming standard''')
         brkUsername = "calvino00"
 
     if "brkPassword" in settings.keys():
-        brkPassword = settings["password"]
+        brkPassword = settings["brkPassword"]
     else:
-        print('''Error: No broker password is present in settings file! Assuming "0123456789"''')
+        print('''Error: No broker password is present in settings file! Assuming standard''')
         brkPassword = "0123456789"
 
     if "sqlAdr" in settings.keys():
         sqlAdr = settings["sqlAdr"]
     else:
-        print('''Error: No SQL Server address is present in settings file! Assuming "51.145.135.119"''')
+        print('''Error: No SQL Server address is present in settings file! Assuming standard''')
         sqlAdr = "51.145.135.119"
 
     if "sqlUsername" in settings.keys():
         sqlUsername = settings["sqlUsername"]
     else:
-        print('''Error: No SQL username is present in settings file! Assuming "SA"''')
+        print('''Error: No SQL username is present in settings file! Assuming standard''')
         sqlUsername = "SA"
 
     if "sqlPassword" in settings.keys():
         sqlPassword = settings["sqlPassword"]
     else:
-        print('''Error: No SQL password is present in settings file! Assuming "Fermi3f27"''')
+        print('''Error: No SQL password is present in settings file! Assuming standard''')
         sqlPassword = "Fermi3f27"
 
     if "sqlName" in settings.keys():
         sqlName = settings["sqlName"]
     else:
-        print('''Error: No SQL DB Name is present in settings file! Assuming "CalvinoDB"''')
+        print('''Error: No SQL DB Name is present in settings file! Assuming standard''')
         sqlName = "CalvinoDB"
 
     try:
@@ -158,6 +190,8 @@ if __name__ == "__main__":
                 dataProxySyncEvent.clear()
                 print(dataProxyHandler.proxy)
         except KeyboardInterrupt:
+            mqttHandler.stop()
+            print("Server stopped")
             quit()
 
         

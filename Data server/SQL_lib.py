@@ -34,7 +34,7 @@ class MsSQL():
 
     def query(self, query, args = tuple()):
         try:
-            self.cursor.execute(query)
+            self.cursor.execute(query, args)
             self.db.commit()
         except Exception as reason:
             print(reason)
