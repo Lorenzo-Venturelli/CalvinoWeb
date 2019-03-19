@@ -1,6 +1,7 @@
 import threading
 import socket
 import time
+import json
 import SQL
 
 class dataProxy():
@@ -36,6 +37,29 @@ class dataProxy():
         else:
             return (False, 1)
 
+    def requestData(self, sensorNumber, dataType, firstTime, lastTime):
+        if firstTime > lastTime:
+            return(False, 1)
+        else:
+            if sensorNumber not in self.lastData.keys():
+                return (False, 2)
+            else:
+                if dataType not in self.lastData[sensorNumber].keys():
+                    return (False, 3)
+                else:
+                    result = self.__DBrequest(sensorNumber = sensorNumber, dataType = dataType, firstTime = firstTime, lastTime = lastTime)
+                    if result == True:
+                        return (False, 4)
+                    elif result == False:
+                        return (False, 5)
+                    else:
+                        try:
+                            result = json.loads(result)
+                        except json.JSONDecodeError:
+                            return (False, 6)
+
+                        return (True, result)
+
     def __notifyUpdate(self, sensorNumber, dataType, dataValue):
         self.proxyLock.acquire()
         self.proxy = [sensorNumber, dataType, dataValue]
@@ -46,6 +70,11 @@ class dataProxy():
     def __DBinsert(self, sensorNumber, dataType, dataValue):
         result = self.SQLProxy.insert(tipo = dataType, sensore = sensorNumber, valore = dataValue)
         return result
+
+    def __DBrequest(self, sensorNumber, dataType, firstTime, lastTime):
+        result = self.SQLProxy.request(dataI = firstTime, dataF = lastTime, sensore = sensorNumber, tipo = dataType)
+        return result
+
 
 if __name__ == "__main__":
     print("Error: This program must be used as a module")
