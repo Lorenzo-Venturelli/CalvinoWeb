@@ -30,7 +30,17 @@ class CalvinoDB():
             return queryResult
 
     def request(self, dataI, dataF, sensore, tipo):
-        queryResult = self.db.query('''SELECT * FROM''' + str(tipo) + '''WHERE Timestamp <=''' + str(dataF) + '''AND Timestamp >=''' + str(dataI) + '''AND ID_sensore = ''' + str(sensore))
+        queryResult = self.db.query('''SELECT * FROM''' + str(tipo) + '''WHERE Timestamp >= ''' + str(dataI) + '''AND Timestamp <= ''' + str(dataF) + '''AND ID_sensore = ''' + str(sensore))
+        if queryResult == True:         # Query succeded without output
+            return True
+        elif queryResult == False:      # Query failed
+            return False
+        else:                           # Query succeded with output
+            return queryResult
+
+    def remove(self,dataI, dataF, tipo):
+        queryResult = self.db.query('''DELETE FROM ''' + str(tipo) + '''WHERE Timestamp >= ''' + str(dataI) + '''AND Timestamp <= ''' + str(dataF))
+
         if queryResult == True:         # Query succeded without output
             return True
         elif queryResult == False:      # Query failed
