@@ -22,15 +22,18 @@ class CalvinoDB():
         timestamp = str(datetime.datetime.utcnow() + datetime.timedelta(hours=+1))
         timestamp = "\'" + timestamp[:-7]  + "\'"   # Format timestamp in MS SQL 'datetime' format
         queryResult = self.db.query('''INSERT INTO ''' + str(tipo) + ''' VALUES (''' + str(ID) + ''', ''' + str(sensore) + ''', ''' + str(timestamp) + ''', ''' + str(valore) + ''')''')
-        #queryResult = self.db.query("INSERT INTO %s VALUES (%s, %s, %s, %s)", (str(tipo).strip(), str(ID).strip(), str(sensore).strip(), str(timestamp), str(valore).strip()))
-
         if queryResult == True:         # Query succeded without output
             return True
         elif queryResult == False:      # Query failed
             return False
         else:                           # Query succeded with output
-            return True
+            return queryResult
 
-    #def request(self, dataI, dataF, sensore = None, tipo = None):
-     #   if (sensore == None):
-      #      if (tipo == None):
+    def request(self, dataI, dataF, sensore, tipo):
+        queryResult = self.db.query('''SELECT * FROM''' + str(tipo) + '''WHERE Timestamp <=''' + str(dataF) + '''AND Timestamp >=''' + str(dataI) + '''AND ID_sensore = ''' + str(sensore))
+        if queryResult == True:         # Query succeded without output
+            return True
+        elif queryResult == False:      # Query failed
+            return False
+        else:                           # Query succeded with output
+            return queryResult
