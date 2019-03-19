@@ -22,8 +22,9 @@ class DataServerAccepter(threading.Thread):
     def run(self):
         try:
             self.serverSocket.bind((str(self.serverAddress), int(self.serverPort)))
-        except socket.error:
+        except socket.error as reason:
             print("Fatal error: Data server accepter socket failed to bind")
+            print("Reason: " + str(reason))
             quit()
 
         self.serverSocket.listen(5)
@@ -60,7 +61,17 @@ class DataServerAccepter(threading.Thread):
         return
 
     def stop(self):
+        for client in self.connectedClient:
+            self.connectedClient[client].disconnect()
+        
         self.__running = False
+        fakeClient = socket.socket(family = socket.AF_INET, type = socket.SOCK_STREAM)
+        fakeClient.connect(("127.0.0.1", self.serverPort))
+        fakeClient.close()
+
+        self.__garbageCollector()
+        return
+        
 
             
 class DataClient(threading.Thread):
@@ -76,16 +87,20 @@ class DataClient(threading.Thread):
     def run(self):
         while self.clientConnected == True:
             request = self.clientSocket.recv(1024)
-            if request != None or request != 0 or request != ' ':
+            request = request.decode()
+            if request != None and request != 0 and request != '' and request != str.encode(''):
                 try:
                     request = json.loads(request)
                 except json.JSONDecodeError:
                     print("Error: Received corrupted request from host " + str(self.address[0]))
                     continue
 
+                print(request)
+
                 if "SN" in request.keys() and "DT" in request.keys() and "FT" in request.keys() and "LT" in request.keys():
                     if request["SN"] != None and request["DT"] != None and request["FT"] != None and request["LT"] != None:       
                         result = self.dataProxy.requestData(sensorNumber = request["SN"], dataType = request["DT"], firstTime = request["FT"], lastTime = request["LT"])
+                        print(result)
                         if result[0] == True:
                             result = result[1]
                             status = "200"
@@ -94,6 +109,7 @@ class DataClient(threading.Thread):
                                 status = "499"
                             elif result[1] == 4 or result[1] == 5 or result[1] == 5:
                                 status = "399"
+                            result = dict()
                     else:
                         result = dict()
                         status = "599"
@@ -105,7 +121,7 @@ class DataClient(threading.Thread):
                 result = json.dumps(result)
                 self.clientSocket.sendall(result)
                 response = self.clientSocket.recv(1024)
-                if response != None or response != 0 or response != ' ':
+                if response != None and response != 0 and response != '' and request != str.encode(''):
                     response = response.decode()
                     if response == "200":
                         continue
@@ -116,9 +132,11 @@ class DataClient(threading.Thread):
                 self.disconnect()
         
         print("Client " + str(self.address[0]) + " disconnected")
+        return
 
     def disconnect(self):
         self.clientConnected = False
+        self.clientSocket.close()
         return
 
 if __name__ == "__main__":
@@ -204,7 +222,7 @@ if __name__ == "__main__":
         quit()
 
     try:
-        dataServerListener = DataServerAccepter(address = "sqlAdr", port = 2000, dataProxy = dataProxyHandler, dataProxyLock = dataProxyLock, dataProxySyncEvent = dataProxySyncEvent)
+        dataServerListener = DataServerAccepter(address = '', port = 2000, dataProxy = dataProxyHandler, dataProxyLock = dataProxyLock, dataProxySyncEvent = dataProxySyncEvent)
     except Exception as reason:
         print("Fatal error: Data Server can not be started")
         print("Reason: " +  str(reason))
@@ -238,12 +256,13 @@ if __name__ == "__main__":
                 while True:
                     dataProxySyncEvent.wait()
                     dataProxySyncEvent.clear()
-                    print(dataProxyHandler.proxy)
+                    #print(dataProxyHandler.proxy)
             except KeyboardInterrupt:
                 mqttHandler.stop()
                 dataServerListener.stop()
                 mqttHandler.join()
                 dataServerListener.join()
+                dataProxySyncEvent.set()
                 print("Server stopped because of user")
                 quit()
 

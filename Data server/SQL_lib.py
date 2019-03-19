@@ -42,6 +42,6 @@ class MsSQL():
 
         try:
             result = self.cursor.fetchall()
-        except Exception:
+        except Exception as reason:
             result = True
         return result

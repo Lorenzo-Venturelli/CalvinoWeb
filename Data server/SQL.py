@@ -30,6 +30,7 @@ class CalvinoDB():
             return queryResult
 
     def request(self, dataI, dataF, sensore, tipo):
+        print(str(tipo) + " " + str(sensore) + " " + str(dataI) + " " + str(dataF))
         queryResult = self.db.query('''SELECT * FROM''' + str(tipo) + '''WHERE Timestamp >= ''' + str(dataI) + '''AND Timestamp <= ''' + str(dataF) + '''AND ID_sensore = ''' + str(sensore))
         if queryResult == True:         # Query succeded without output
             return True

@@ -40,10 +40,12 @@ class MQTTclient(threading.Thread):
         while self.keepListening == True:
             time.sleep(0.1)
         
-        self.client.loop_stop()
+        self.client.loop_stop(force = True)
         self.client.disconnect()
 
         print("MQTT connection terminated")
+
+        return
 
     def stop(self):
         self.keepListening = False
