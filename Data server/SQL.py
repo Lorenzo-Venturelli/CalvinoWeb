@@ -28,10 +28,11 @@ class CalvinoDB():
             return False
         else:                           # Query succeded with output
             return queryResult
-
+## Inserire supporto futures
     def request(self, dataI, dataF, sensore, tipo):
-        print(str(tipo) + " " + str(sensore) + " " + str(dataI) + " " + str(dataF))
-        queryResult = self.db.query('''SELECT * FROM''' + str(tipo) + '''WHERE Timestamp >= ''' + str(dataI) + '''AND Timestamp <= ''' + str(dataF) + '''AND ID_sensore = ''' + str(sensore))
+        dataI = "\'" + dataI + "\'"
+        dataF = "\'" + dataF + "\'"
+        queryResult = self.db.query('''SELECT * FROM ''' + str(tipo) + ''' WHERE Timestamp >= ''' + str(dataI) + ''' AND Timestamp <= ''' + str(dataF) + ''' AND ID_sensore = ''' + str(sensore))
         if queryResult == True:         # Query succeded without output
             return True
         elif queryResult == False:      # Query failed
@@ -40,7 +41,9 @@ class CalvinoDB():
             return queryResult
 
     def remove(self,dataI, dataF, tipo):
-        queryResult = self.db.query('''DELETE FROM ''' + str(tipo) + '''WHERE Timestamp >= ''' + str(dataI) + '''AND Timestamp <= ''' + str(dataF))
+        dataI = "\'" + dataI + "\'"
+        dataF = "\'" + dataF + "\'"
+        queryResult = self.db.query('''DELETE FROM ''' + str(tipo) + ''' WHERE Timestamp >= ''' + str(dataI) + ''' AND Timestamp <= ''' + str(dataF))
 
         if queryResult == True:         # Query succeded without output
             return True

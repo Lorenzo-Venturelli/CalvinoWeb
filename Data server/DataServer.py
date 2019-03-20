@@ -25,8 +25,9 @@ class DataServerAccepter(threading.Thread):
         except socket.error as reason:
             print("Fatal error: Data server accepter socket failed to bind")
             print("Reason: " + str(reason))
-            quit()
+            return
 
+        self.dataProxySyncEvent.set()
         self.serverSocket.listen(5)
         while self.__running == True:
             try:
@@ -72,8 +73,7 @@ class DataServerAccepter(threading.Thread):
         self.__garbageCollector()
         return
         
-
-            
+     
 class DataClient(threading.Thread):
     def __init__(self, address, clientSocket, dataProxy, dataProxyLock, dataProxySyncEvent):
         self.address = address
@@ -118,15 +118,16 @@ class DataClient(threading.Thread):
                     status = "599"
 
                 result["status"] = status
-                result = json.dumps(result)
-                self.clientSocket.sendall(result)
+                resultJSON = json.dumps(result)
+                resultJSON = resultJSON.encode()
+                self.clientSocket.sendall(resultJSON)
                 response = self.clientSocket.recv(1024)
                 if response != None and response != 0 and response != '' and request != str.encode(''):
                     response = response.decode()
                     if response == "200":
                         continue
                     else:
-                        self.clientSocket.sendall(result)
+                        self.clientSocket.sendall(resultJSON)
                         continue
             else:
                 self.disconnect()

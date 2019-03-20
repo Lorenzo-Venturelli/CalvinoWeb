@@ -53,11 +53,12 @@ class dataProxy():
                     elif result == False:
                         return (False, 5)
                     else:
+                        result = self.__parseQueryResult(queryResult = result)
                         try:
-                            result = json.loads(result)
+                            result = json.dumps(result)
                         except json.JSONDecodeError:
                             return (False, 6)
-
+                        print(result)
                         return (True, result)
 
     def __notifyUpdate(self, sensorNumber, dataType, dataValue):
@@ -74,6 +75,24 @@ class dataProxy():
     def __DBrequest(self, sensorNumber, dataType, firstTime, lastTime):
         result = self.SQLProxy.request(dataI = firstTime, dataF = lastTime, sensore = sensorNumber, tipo = dataType)
         return result
+
+    def __parseQueryResult(self, queryResult):
+        parsed = dict()
+        tmp = dict()
+
+        try:
+            for entry in queryResult:
+                tmp[entry[0]] = entry[1:]
+
+            for entry in tmp.keys():
+                parsed[entry] = []
+                for element in tmp[entry]:
+                    parsed[entry].append(str(element))
+            print(parsed)
+        except Exception as reason:
+            print("Eccezzione : " + str(reason))
+        return parsed
+                
 
 
 if __name__ == "__main__":
