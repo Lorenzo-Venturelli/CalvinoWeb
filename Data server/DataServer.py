@@ -86,21 +86,28 @@ class DataClient(threading.Thread):
     
     def run(self):
         while self.clientConnected == True:
-            request = self.clientSocket.recv(1024)
-            request = request.decode()
+            try:
+                request = self.clientSocket.recv(1024)
+            except ConnectionResetError:
+                self.disconnect()
+                continue
+            except Exception:
+                print("Error: Unknown comunication error occurred with client " + str(self.address[0]))
+                continue
+
             if request != None and request != 0 and request != '' and request != str.encode(''):
+                request = request.decode()
                 try:
                     request = json.loads(request)
                 except json.JSONDecodeError:
                     print("Error: Received corrupted request from host " + str(self.address[0]))
                     continue
 
-                print(request)
+                print("Received request: " + str(request))
 
                 if "SN" in request.keys() and "DT" in request.keys() and "FT" in request.keys() and "LT" in request.keys():
                     if request["SN"] != None and request["DT"] != None and request["FT"] != None and request["LT"] != None:       
                         result = self.dataProxy.requestData(sensorNumber = request["SN"], dataType = request["DT"], firstTime = request["FT"], lastTime = request["LT"])
-                        print(result)
                         if result[0] == True:
                             result = result[1]
                             status = "200"
@@ -117,11 +124,21 @@ class DataClient(threading.Thread):
                     result = dict()
                     status = "599"
 
+                print(result)
                 result["status"] = status
                 resultJSON = json.dumps(result)
                 resultJSON = resultJSON.encode()
                 self.clientSocket.sendall(resultJSON)
-                response = self.clientSocket.recv(1024)
+                
+                try:
+                    response = self.clientSocket.recv(1024)
+                except ConnectionResetError:
+                    self.disconnect()
+                    continue
+                except Exception:
+                    print("Error: Unknown comunication error occurred with client " + str(self.address[0]))
+                    continue
+
                 if response != None and response != 0 and response != '' and request != str.encode(''):
                     response = response.decode()
                     if response == "200":

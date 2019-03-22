@@ -19,7 +19,7 @@ class MQTTclient(threading.Thread):
         self.subscribeResult = None
         self.dataProxy = dataProxy
         self.dataProxyLock = threading.Lock()
-        threading.Thread.__init__(self, name = "MQTT Thread", daemon = False)
+        threading.Thread.__init__(self, name = "MQTT Thread", daemon = True)
 
     def run(self):
         self.client.connect(self.brokerAddress)

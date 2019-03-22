@@ -54,12 +54,10 @@ class dataProxy():
                         return (False, 5)
                     else:
                         result = self.__parseQueryResult(queryResult = result)
-                        try:
-                            result = json.dumps(result)
-                        except json.JSONDecodeError:
+                        if result == False:
                             return (False, 6)
-                        print(result)
-                        return (True, result)
+                        else:
+                            return (True, result)
 
     def __notifyUpdate(self, sensorNumber, dataType, dataValue):
         self.proxyLock.acquire()
@@ -88,9 +86,10 @@ class dataProxy():
                 parsed[entry] = []
                 for element in tmp[entry]:
                     parsed[entry].append(str(element))
-            print(parsed)
         except Exception as reason:
-            print("Eccezzione : " + str(reason))
+            print("Error: parsing error occured")
+            print("Reason: " + str(reason))
+            return False
         return parsed
                 
 
