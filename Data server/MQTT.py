@@ -40,8 +40,12 @@ class MQTTclient(threading.Thread):
         while self.keepListening == True:
             time.sleep(0.1)
         
-        self.client.loop_stop(force = True)
-        self.client.disconnect()
+        try:
+            self.client.loop_stop(force = True)
+            self.client.disconnect()
+        except Exception as reason:
+            print("MQTT Error: Error occured while stopping MQTT sub-Thread")
+            print("Reason: " + str(reason))
 
         print("MQTT connection terminated")
 
@@ -66,7 +70,6 @@ class MQTTclient(threading.Thread):
             dataValue = str(message.payload.decode("utf-8"))
             result = self.dataProxy.lastDataUpdate(sensorNumber = int(sensorNumber), dataType = dataType, dataValue = dataValue)
             if result[0] == True:
-                self.syncEvents[0].set()
                 return
             else:
                 if result[1] == 1:

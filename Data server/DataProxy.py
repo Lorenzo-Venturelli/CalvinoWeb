@@ -30,9 +30,6 @@ class dataProxy():
                     return (False, 3)
                 else:
                     self.__notifyUpdate(sensorNumber = sensorNumber, dataType = dataType, dataValue = dataValue)
-                    while self.syncEvents.isSet() == True:
-                        pass
-                    self.syncEvents.set()
                     return (True, 0)
         else:
             return (False, 1)
@@ -53,11 +50,7 @@ class dataProxy():
                     elif result == False:
                         return (False, 5)
                     else:
-                        result = self.__parseQueryResult(queryResult = result)
-                        if result == False:
-                            return (False, 6)
-                        else:
-                            return (True, result)
+                        return (result)
 
     def __notifyUpdate(self, sensorNumber, dataType, dataValue):
         self.proxyLock.acquire()
@@ -67,31 +60,12 @@ class dataProxy():
         return
 
     def __DBinsert(self, sensorNumber, dataType, dataValue):
-        result = self.SQLProxy.insert(tipo = dataType, sensore = sensorNumber, valore = dataValue)
+        result = self.SQLProxy.insert(sensorNumber = sensorNumber, dataType = dataType, value = dataValue, timestamp = None)
         return result
 
     def __DBrequest(self, sensorNumber, dataType, firstTime, lastTime):
         result = self.SQLProxy.request(dataI = firstTime, dataF = lastTime, sensore = sensorNumber, tipo = dataType)
         return result
-
-    def __parseQueryResult(self, queryResult):
-        parsed = dict()
-        tmp = dict()
-
-        try:
-            for entry in queryResult:
-                tmp[entry[0]] = entry[1:]
-
-            for entry in tmp.keys():
-                parsed[entry] = []
-                for element in tmp[entry]:
-                    parsed[entry].append(str(element))
-        except Exception as reason:
-            print("Error: parsing error occured")
-            print("Reason: " + str(reason))
-            return False
-        return parsed
-                
 
 
 if __name__ == "__main__":

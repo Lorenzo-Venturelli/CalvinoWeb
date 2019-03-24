@@ -41,6 +41,7 @@ class DataServerAccepter(threading.Thread):
                     clientThread = DataClient(address = clientAddress, clientSocket = clientSocket, dataProxy = self.dataProxy, dataProxyLock = self.dataProxyLock, dataProxySyncEvent = self.dataProxySyncEvent)
                     clientThread.start()
                     self.connectedClient[str(clientAddress[0])] = clientThread
+                    print("Client " + str(clientAddress[0]) + " connected")
                 except Exception as reason:
                     print("Error: Unhandled error occured while creating client thread for client " + str(clientAddress[0]))
                     print("Reason: " + str(reason))
@@ -49,6 +50,9 @@ class DataServerAccepter(threading.Thread):
                     clientAddress = None
                 
             self.__garbageCollector()
+
+        self.__garbageCollector()
+        return
     
     def __garbageCollector(self):
         deathClient = []
@@ -62,15 +66,15 @@ class DataServerAccepter(threading.Thread):
         return
 
     def stop(self):
-        for client in self.connectedClient:
-            self.connectedClient[client].disconnect()
-        
         self.__running = False
         fakeClient = socket.socket(family = socket.AF_INET, type = socket.SOCK_STREAM)
         fakeClient.connect(("127.0.0.1", self.serverPort))
-        fakeClient.close()
 
-        self.__garbageCollector()
+        for client in self.connectedClient:
+            self.connectedClient[client].disconnect()
+            self.connectedClient[client].join()
+
+        fakeClient.close()
         return
         
      
@@ -271,16 +275,15 @@ if __name__ == "__main__":
             quit()
         else:
             try:
+                res = sqlHandler.summarize(sensorNumber = 3, dataType = "luce", firstTime = "2019-03-24 16:00:00", lastTime = "2019-03-24 17:00:00")
+                print(res)
                 while True:
-                    dataProxySyncEvent.wait()
-                    dataProxySyncEvent.clear()
-                    #print(dataProxyHandler.proxy)
+                    time.sleep(0.1)
             except KeyboardInterrupt:
                 mqttHandler.stop()
                 dataServerListener.stop()
                 mqttHandler.join()
                 dataServerListener.join()
-                dataProxySyncEvent.set()
                 print("Server stopped because of user")
                 quit()
 
