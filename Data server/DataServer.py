@@ -3,6 +3,7 @@ import socket
 import time
 import json
 import re
+import datetime
 import DataProxy
 import MQTT
 import SQL
@@ -76,8 +77,7 @@ class DataServerAccepter(threading.Thread):
 
         fakeClient.close()
         return
-        
-     
+         
 class DataClient(threading.Thread):
     def __init__(self, address, clientSocket, dataProxy, dataProxyLock, dataProxySyncEvent):
         self.address = address
@@ -160,6 +160,19 @@ class DataClient(threading.Thread):
         self.clientConnected = False
         self.clientSocket.close()
         return
+
+def optimizeSQL(dataProxy):
+    timestamp = str(datetime.datetime.utcnow() + datetime.timedelta(hours=+1))
+    timestamp = timestamp[:-7]
+    match = re.match(pattern = r"([0-9]{4}\-[0-9]{2}\-[0-9]{2}\ [0-9]{2})\:[0-9]{2}\:[0-9]{2}", string = timestamp)
+    lastTime = match.group(1) + ":00:00"
+    match = re.match(pattern = r"([0-9]{4}\-[0-9]{2}\-[0-9]{2}\ )([0-9]{2})(\:[0-9]{2}\:[0-9]{2})", string = lastTime)
+    h = int(match.group(2))
+    h = h - 1
+    firstTime = match.group(1) + str(h) + match.group(3)
+    dataProxy.summarizeData(firstTime = firstTime, lastTime = lastTime)
+    return
+
 
 if __name__ == "__main__":
     mqttSyncEvent = [threading.Event(), threading.Event()]
@@ -275,10 +288,9 @@ if __name__ == "__main__":
             quit()
         else:
             try:
-                res = sqlHandler.summarize(sensorNumber = 3, dataType = "luce", firstTime = "2019-03-24 16:00:00", lastTime = "2019-03-24 17:00:00")
-                print(res)
                 while True:
-                    time.sleep(0.1)
+                    optimizeSQL(dataProxy = dataProxyHandler)
+                    time.sleep(3600)
             except KeyboardInterrupt:
                 mqttHandler.stop()
                 dataServerListener.stop()

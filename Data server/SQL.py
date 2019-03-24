@@ -74,17 +74,20 @@ class CalvinoDB():
                 for record in many:
                     rowNumber += 1
                     mediumValue = mediumValue + float(many[record][2])
-                mediumValue = mediumValue / rowNumber
-                mediumValue = round(number = mediumValue, ndigits = 2)
-                result = self.remove(sensorNumber = sensorNumber, dataType = dataType, firstTime = firstTime, lastTime = lastTime)
-                if result == False:
-                    return (False, 4)
-                else:
-                    result = self.insert(sensorNumber = sensorNumber, dataType = dataType, value = mediumValue, timestamp = firstTime)
+                if rowNumber != 0:
+                    mediumValue = mediumValue / rowNumber
+                    mediumValue = round(number = mediumValue, ndigits = 2)
+                    result = self.remove(sensorNumber = sensorNumber, dataType = dataType, firstTime = firstTime, lastTime = lastTime)
                     if result == False:
-                        return (False, 5)
+                        return (False, 4)
                     else:
-                        return (True, 0)
+                        result = self.insert(sensorNumber = sensorNumber, dataType = dataType, value = mediumValue, timestamp = firstTime)
+                        if result == False:
+                            return (False, 5)
+                        else:
+                            return (True, 0)
+                else:
+                    return(True, 0)
         
 
     def __parseQueryResult(self, queryResult):

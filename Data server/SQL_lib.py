@@ -41,6 +41,7 @@ class MsSQL():
             self.__lock.release()
         except Exception as reason:
             print(reason)
+            self.__lock.release()
             return False
 
         try:

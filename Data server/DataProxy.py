@@ -52,6 +52,28 @@ class dataProxy():
                     else:
                         return (result)
 
+    def summarizeData(self, firstTime, lastTime):
+        if firstTime >= lastTime:
+            return False
+        else:
+            for sensorNumber in self.lastData.keys():
+                for dataType in self.lastData[sensorNumber].keys():
+                    print("sensor " + str(sensorNumber) + ", type " + str(dataType))
+                    result = self.SQLProxy.summarize(sensorNumber = sensorNumber, dataType = dataType, firstTime = firstTime, lastTime = lastTime)
+                    if result[0] == False:
+                        if result[1] == 1:
+                            print("SQL Error: Impossible to summarize values if firstTime is bigger than lastTime")
+                        elif result[1] == 2:
+                            print("SQL Error: No data to summarize for sensor " + str(sensorNumber) + " of type " + str(dataType) + " between " + str(firstTime) + " and " + str(lastTime))
+                        elif result[1] == 3:
+                            print("SQL Error: Unexpected query error while requesting data to summarize")
+                        elif result[1] == 4:
+                            print("SQL Error: Unexpected query error while removing summarized data")
+                        elif result[1] == 5:
+                            print("SQL Error: Unexpected query error while inserting new summarized data")
+        return True
+
+
     def __notifyUpdate(self, sensorNumber, dataType, dataValue):
         self.proxyLock.acquire()
         self.proxy = [sensorNumber, dataType, dataValue]
