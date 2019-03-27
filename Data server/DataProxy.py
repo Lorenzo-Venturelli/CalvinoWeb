@@ -2,6 +2,7 @@ import threading
 import socket
 import time
 import json
+import re
 import SQL
 
 class dataProxy():
@@ -52,14 +53,22 @@ class dataProxy():
                     else:
                         return (result)
 
-    def summarizeData(self, firstTime, lastTime):
+    def summarizeData(self, firstTime, lastTime, skipCheck = False):
         if firstTime >= lastTime:
             return False
         else:
+            firstTime = str(firstTime)[:-7]
+            match = re.match(pattern = r"([0-9]{4}\-[0-9]{2}\-[0-9]{2}\ [0-9]{2})\:[0-9]{2}\:[0-9]{2}", string = firstTime)
+            firstTime = match.group(1) + ":00:00"
+            lastTime = str(lastTime)[:-7]
+            match = re.match(pattern = r"([0-9]{4}\-[0-9]{2}\-[0-9]{2}\ [0-9]{2})\:[0-9]{2}\:[0-9]{2}", string = lastTime)
+            lastTime = match.group(1) + ":00:00"
+
+            self.SQLProxy.notifySummarization(state = True)
             for sensorNumber in self.lastData.keys():
                 for dataType in self.lastData[sensorNumber].keys():
                     print("sensor " + str(sensorNumber) + ", type " + str(dataType))
-                    result = self.SQLProxy.summarize(sensorNumber = sensorNumber, dataType = dataType, firstTime = firstTime, lastTime = lastTime)
+                    result = self.SQLProxy.summarize(sensorNumber = sensorNumber, dataType = dataType, firstTime = firstTime, lastTime = lastTime, skipCheck = True)
                     if result[0] == False:
                         if result[1] == 1:
                             print("SQL Error: Impossible to summarize values if firstTime is bigger than lastTime")
@@ -71,6 +80,7 @@ class dataProxy():
                             print("SQL Error: Unexpected query error while removing summarized data")
                         elif result[1] == 5:
                             print("SQL Error: Unexpected query error while inserting new summarized data")
+            self.SQLProxy.notifySummarization(state = False)
         return True
 
 

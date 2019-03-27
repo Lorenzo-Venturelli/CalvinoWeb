@@ -162,15 +162,12 @@ class DataClient(threading.Thread):
         return
 
 def optimizeSQL(dataProxy):
-    timestamp = str(datetime.datetime.utcnow() + datetime.timedelta(hours=+1))
-    timestamp = timestamp[:-7]
-    match = re.match(pattern = r"([0-9]{4}\-[0-9]{2}\-[0-9]{2}\ [0-9]{2})\:[0-9]{2}\:[0-9]{2}", string = timestamp)
-    lastTime = match.group(1) + ":00:00"
-    match = re.match(pattern = r"([0-9]{4}\-[0-9]{2}\-[0-9]{2}\ )([0-9]{2})(\:[0-9]{2}\:[0-9]{2})", string = lastTime)
-    h = int(match.group(2))
-    h = h - 1
-    firstTime = match.group(1) + str(h) + match.group(3)
-    dataProxy.summarizeData(firstTime = firstTime, lastTime = lastTime)
+    lastTime = datetime.datetime.utcnow() + datetime.timedelta(hours = +1)
+    firstTime = datetime.datetime.utcnow()
+    print(firstTime)
+    print(lastTime)
+    result = dataProxy.summarizeData(firstTime = firstTime, lastTime = lastTime)
+    print(result)
     return
 
 
@@ -291,6 +288,7 @@ if __name__ == "__main__":
                 while True:
                     optimizeSQL(dataProxy = dataProxyHandler)
                     time.sleep(3600)
+                    
             except KeyboardInterrupt:
                 mqttHandler.stop()
                 dataServerListener.stop()

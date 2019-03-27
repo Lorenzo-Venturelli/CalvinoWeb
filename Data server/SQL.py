@@ -1,4 +1,5 @@
 import SQL_lib
+import queue
 from random import randint
 import datetime
 #riceve numero sensore, tipo dato, dato & inserici nel DB + timestamp e numero casuale
@@ -10,6 +11,8 @@ class CalvinoDB():
         self.__dbName = databaseName
         self.__dbUser = user
         self.__dbPass = password
+        self.__queryQueue = queue.Queue()
+        self.__pauseInsert = False
         self.db = SQL_lib.MsSQL(server = self.__dbAddress, database = self.__dbName, username = self.__dbUser, password = self.__dbPass)
 
     def __randomN(self, digits):
@@ -24,13 +27,19 @@ class CalvinoDB():
             timestamp = "\'" + timestamp[:-7]  + "\'"   # Format timestamp in MS SQL 'datetime' format
         else:
             timestamp = "\'" + timestamp + "\'"
-        queryResult = self.db.query('''INSERT INTO ''' + str(dataType) + ''' VALUES (''' + str(ID) + ''', ''' + str(sensorNumber) + ''', ''' + str(timestamp) + ''', ''' + str(value) + ''')''')
-        if queryResult == True:         # Query succeded without output
+
+        query = '''INSERT INTO ''' + str(dataType) + ''' VALUES (''' + str(ID) + ''', ''' + str(sensorNumber) + ''', ''' + str(timestamp) + ''', ''' + str(value) + ''')'''
+        if self.__pauseInsert == True:
+            self.__queryQueue.put(query)
             return True
-        elif queryResult == False:      # Query failed
-            return False
-        else:                           # Query succeded with output
-            return queryResult
+        else:
+            queryResult = self.db.query(query)
+            if queryResult == True:         # Query succeded without output
+                return True
+            elif queryResult == False:      # Query failed
+                return False
+            else:                           # Query succeded with output
+                return queryResult
 
     def request(self, sensorNumber, dataType, firstTime, lastTime):
         firstTime = "\'" + firstTime + "\'"
@@ -59,15 +68,16 @@ class CalvinoDB():
         else:                           # Query succeded with output
             return queryResult
 
-    def summarize(self, sensorNumber, dataType, firstTime, lastTime):
-        if firstTime >= lastTime:
-            return (False, 1)
+    def summarize(self, sensorNumber, dataType, firstTime, lastTime, skipCheck = False):
+        if firstTime >= lastTime and skipCheck == False:
+            status = (False, 1)
         else:
+            self.__pauseInsert = True
             many = self.request(sensorNumber = sensorNumber, dataType = dataType, firstTime = firstTime, lastTime = lastTime)
             if many == True:
-                return (False, 2)
+                status = (False, 2)
             elif many == False:
-                return (False, 3)
+                status = (False, 3)
             else:
                 rowNumber = 0
                 mediumValue = 0
@@ -79,15 +89,31 @@ class CalvinoDB():
                     mediumValue = round(number = mediumValue, ndigits = 2)
                     result = self.remove(sensorNumber = sensorNumber, dataType = dataType, firstTime = firstTime, lastTime = lastTime)
                     if result == False:
-                        return (False, 4)
+                        status = (False, 4)
                     else:
                         result = self.insert(sensorNumber = sensorNumber, dataType = dataType, value = mediumValue, timestamp = firstTime)
                         if result == False:
-                            return (False, 5)
+                            status = (False, 5)
                         else:
-                            return (True, 0)
+                            status = (True, 0)
                 else:
-                    return(True, 0)
+                    status = (True, 0)
+        return status
+
+    def notifySummarization(self, state):
+        if state == True:
+            self.__pauseInsert = True
+        else:
+            self.__pauseInsert = False
+            self.__flushQueue()
+            
+    def __flushQueue(self):
+        while self.__queryQueue.empty() == False:
+            query = self.__queryQueue.get()
+            print(query)
+            queryResult = self.db.query(query)
+            if queryResult == False:
+                print("SQL Error: Unknown SQL error while inserting queued data")
         
 
     def __parseQueryResult(self, queryResult):
