@@ -173,7 +173,7 @@ def optimizeSQL(dataProxy, reason, firstTime = None):
         firstTime = datetime.datetime.utcnow()
 
     result = dataProxy.summarizeData(firstTime = firstTime, lastTime = lastTime)
-    if result == True:
+    if result == True and reason == True:
         firstTime = firstTime + datetime.timedelta(hours = +1)
         lastTime = lastTime + datetime.timedelta(hours = +1)
         result = dataProxy.summarizeData(firstTime = firstTime, lastTime = lastTime)
