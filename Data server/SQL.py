@@ -1,10 +1,13 @@
+#! /usr/bin/python
 import SQL_lib
 import queue
 from random import randint
 import datetime
-#riceve numero sensore, tipo dato, dato & inserici nel DB + timestamp e numero casuale
-#richiesta di dati per sensore , per tipo o per sensore/tipo o per range di data (in ogni caso ritorna sempre la data)
 
+# This class provide method to execute SQL DB operations.
+# This class provide building query method and parsing method.
+# This class must be used through DataProxy interface to avodi errors.
+# For detailed informations about each method see documentation.
 class CalvinoDB():
     def __init__(self, databaseAddress, databaseName, user, password):
         self.__dbAddress = databaseAddress
@@ -114,7 +117,6 @@ class CalvinoDB():
             if queryResult == False:
                 print("SQL Error: Unknown SQL error while inserting queued data")
         
-
     def __parseQueryResult(self, queryResult):
         parsed = dict()
         tmp = dict()

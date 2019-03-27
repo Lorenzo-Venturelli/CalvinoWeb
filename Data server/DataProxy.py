@@ -5,6 +5,10 @@ import json
 import re
 import SQL
 
+# This class provide a proxy interface between SQL handler class and others classes.
+# This class also provide automatic parsing processes for data in both direction to
+# avoid formal errors.
+# For detailed informations about each method see documentation.
 class dataProxy():
     def __init__(self, SQLProxy, syncEvents, lock, proxy):
         self.SQLProxy = SQLProxy

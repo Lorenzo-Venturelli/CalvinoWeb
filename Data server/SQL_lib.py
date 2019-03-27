@@ -1,29 +1,35 @@
+#! /usr/bin/python
 import pymysql
 import pymssql
-from concurrent.futures import ThreadPoolExecutor
 import threading
 
-# This class implement PyMySQL, for MySQL Server
-class MySQL():
-    def __init__(self, host, database, username, password):
-        self.db = pymysql.connect(host=host,
-                     user=username,
-                     password=password,
-                     db=database,
-                     cursorclass=pymysql.cursors.DictCursor)
+# Those class provide low level interface for execute query on DB (MySQL and MsSQL)
+# Those class must be used through SQL module
 
-        print("Connected to MySQL database")
-        self.pool = ThreadPoolExecutor(100)
-        self.cursor = self.db.cursor()
+class MySQL():
+    def __init__(self, server, username, password, database):
+        self.__db = pymysql.connect(server = str(server), user = str(username), password = str(password), database = str(database))
+        self.__db.autocommit(True)
+        self.__lock = threading.Lock()
+        self.__cursor = self.__db.cursor()
 
     def query(self, query, args = tuple()):
-        query = self.pool.submit(self.__runQuery, (str(query), args))
-        return query.result()
+        try:
+            self.__lock.acquire()
+            self.__cursor.execute(query, args)
+            self.__db.commit()
+            self.__lock.release()
+        except Exception as reason:
+            print(reason)
+            self.__lock.release()
+            return False
 
-    def __runQuery(self, query, args = tuple()):
-        self.cursor.execute(str(query[0]), query[1])
-        self.db.commit()
-        return self.cursor.fetchall()
+        try:
+            result = self.__cursor.fetchall()
+        except Exception as reason:
+            result = True
+            #print(reason)
+        return result
 
 # This class implement PyMsSQL, for Microsoft SQL Server
 class MsSQL():

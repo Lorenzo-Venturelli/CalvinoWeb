@@ -5,6 +5,10 @@ import threading
 import time
 import re
 
+# This class handle connection with MQTT broker. This is an indipendent thread.
+# When is connected the main loop listen for incoming messages and handle them
+# using __messageCallback that is, as the name suggest, asynchronusly called.
+# For detailed information about each method see documentation.
 class MQTTclient(threading.Thread):
     def __init__(self, brokerAddress, username, password, syncEvents, dataProxy):
         self.brokerAddress = brokerAddress
