@@ -161,14 +161,22 @@ class DataClient(threading.Thread):
         self.clientSocket.close()
         return
 
-def optimizeSQL(dataProxy):
-    lastTime = datetime.datetime.utcnow() + datetime.timedelta(hours = +1)
-    firstTime = datetime.datetime.utcnow()
-    print(firstTime)
-    print(lastTime)
+def optimizeSQL(dataProxy, reason, firstTime = None):
+    if reason == True:
+        if firstTime != None:
+            lastTime = firstTime + datetime.timedelta(hours = +1)
+        else:
+            return False
+    else:
+        lastTime = datetime.datetime.utcnow() + datetime.timedelta(hours = +1)
+        firstTime = datetime.datetime.utcnow()
+
     result = dataProxy.summarizeData(firstTime = firstTime, lastTime = lastTime)
-    print(result)
-    return
+    if result == True:
+        firstTime = firstTime + datetime.timedelta(hours = +1)
+        lastTime = lastTime + datetime.timedelta(hours = +1)
+        result = dataProxy.summarizeData(firstTime = firstTime, lastTime = lastTime)
+    return result
 
 
 if __name__ == "__main__":
@@ -176,6 +184,7 @@ if __name__ == "__main__":
     dataProxySyncEvent = threading.Event()
     dataProxyLock = threading.Lock()
     lastData = None
+    startingTime = datetime.datetime.utcnow() + datetime.timedelta(hours = +1)
 
     try:
         with open(file = "./file/settings.json", mode = 'r') as settingsFile:
@@ -286,14 +295,14 @@ if __name__ == "__main__":
         else:
             try:
                 while True:
-                    optimizeSQL(dataProxy = dataProxyHandler)
                     time.sleep(3600)
-                    
+                    optimizeSQL(dataProxy = dataProxyHandler, reason = False)
             except KeyboardInterrupt:
                 mqttHandler.stop()
                 dataServerListener.stop()
                 mqttHandler.join()
                 dataServerListener.join()
+                optimizeSQL(dataProxy = dataProxyHandler, reason = True, firstTime = startingTime)
                 print("Server stopped because of user")
                 quit()
 

@@ -67,7 +67,6 @@ class dataProxy():
             self.SQLProxy.notifySummarization(state = True)
             for sensorNumber in self.lastData.keys():
                 for dataType in self.lastData[sensorNumber].keys():
-                    print("sensor " + str(sensorNumber) + ", type " + str(dataType))
                     result = self.SQLProxy.summarize(sensorNumber = sensorNumber, dataType = dataType, firstTime = firstTime, lastTime = lastTime, skipCheck = True)
                     if result[0] == False:
                         if result[1] == 1:
@@ -81,6 +80,7 @@ class dataProxy():
                         elif result[1] == 5:
                             print("SQL Error: Unexpected query error while inserting new summarized data")
             self.SQLProxy.notifySummarization(state = False)
+        print("Data optimized for interval " + str(firstTime) + " " + str(lastTime))
         return True
 
 

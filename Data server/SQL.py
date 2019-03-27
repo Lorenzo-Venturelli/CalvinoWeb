@@ -110,7 +110,6 @@ class CalvinoDB():
     def __flushQueue(self):
         while self.__queryQueue.empty() == False:
             query = self.__queryQueue.get()
-            print(query)
             queryResult = self.db.query(query)
             if queryResult == False:
                 print("SQL Error: Unknown SQL error while inserting queued data")
