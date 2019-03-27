@@ -178,6 +178,13 @@ def optimizeSQL(dataProxy, reason, firstTime = None):
         result = dataProxy.summarizeData(firstTime = firstTime, lastTime = lastTime)
     return result
 
+def shutdown(mqttHandler, dataProxyHandler, dataServerListener, startingTime):
+    mqttHandler.stop()
+    dataServerListener.stop()
+    mqttHandler.join()
+    dataServerListener.join()
+    optimizeSQL(dataProxy = dataProxyHandler, reason = True, firstTime = startingTime)
+    return
 
 if __name__ == "__main__":
     mqttSyncEvent = [threading.Event(), threading.Event()]
@@ -190,56 +197,56 @@ if __name__ == "__main__":
         with open(file = "./file/settings.json", mode = 'r') as settingsFile:
             settings = json.load(fp = settingsFile)
     except FileNotFoundError:
-        print("Error: Settings file not found, assuming standard settings")
+        print("Error: Settings file not found")
         settings = dict()
     except json.JSONDecodeError:
-        print("Error: Settings file has an invalid format, assuming standard settings")
+        print("Error: Settings file has an invalid format")
         settings = dict()
     except Exception:
-        print("Error: An unknown error occurred while reading the settings file, assuming standard settings")
+        print("Error: An unknown error occurred while reading the settings file")
         settings = dict()
 
     if "brkAdr" in settings.keys():
         brkAdr = settings["brkAdr"]
     else:
-        print('''Error: No broker address is present in settings file! Assuming standard''')
-        brkAdr = "broker.shiftr.io"
+        print('''Error: No broker address is present in settings file! Please provide it''')
+        brkAdr = input(prompt = "> ")
 
     if "brkUsername" in settings.keys():
         brkUsername = settings["brkUsername"]
     else:
-        print('''Error: No broker username is present in settings file! Assuming standard''')
-        brkUsername = "calvino00"
+        print('''Error: No broker username is present in settings file! Please provide it''')
+        brkUsername = input(prompt = "> ")
 
     if "brkPassword" in settings.keys():
         brkPassword = settings["brkPassword"]
     else:
-        print('''Error: No broker password is present in settings file! Assuming standard''')
-        brkPassword = "0123456789"
+        print('''Error: No broker password is present in settings file! Please provide it''')
+        brkPassword = input(prompt = "> ")
 
     if "sqlAdr" in settings.keys():
         sqlAdr = settings["sqlAdr"]
     else:
-        print('''Error: No SQL Server address is present in settings file! Assuming standard''')
-        sqlAdr = "51.145.135.119"
+        print('''Error: No SQL Server address is present in settings file! Please provide it''')
+        sqlAdr = input(prompt = "> ")
 
     if "sqlUsername" in settings.keys():
         sqlUsername = settings["sqlUsername"]
     else:
-        print('''Error: No SQL username is present in settings file! Assuming standard''')
-        sqlUsername = "SA"
+        print('''Error: No SQL username is present in settings file! Please provide it''')
+        sqlUsername = input(prompt = "> ")
 
     if "sqlPassword" in settings.keys():
         sqlPassword = settings["sqlPassword"]
     else:
-        print('''Error: No SQL password is present in settings file! Assuming standard''')
-        sqlPassword = "Fermi3f27"
+        print('''Error: No SQL password is present in settings file! Please provide it''')
+        sqlPassword = input(prompt = "> ")
 
     if "sqlName" in settings.keys():
         sqlName = settings["sqlName"]
     else:
-        print('''Error: No SQL DB Name is present in settings file! Assuming standard''')
-        sqlName = "CalvinoDB"
+        print('''Error: No SQL DB Name is present in settings file! Please provide it''')
+        sqlName = input(prompt = "> ")
 
     try:
         sqlHandler = SQL.CalvinoDB(databaseAddress = sqlAdr, databaseName = sqlName, user = sqlUsername, password = sqlPassword)
@@ -298,11 +305,7 @@ if __name__ == "__main__":
                     time.sleep(3600)
                     optimizeSQL(dataProxy = dataProxyHandler, reason = False)
             except KeyboardInterrupt:
-                mqttHandler.stop()
-                dataServerListener.stop()
-                mqttHandler.join()
-                dataServerListener.join()
-                optimizeSQL(dataProxy = dataProxyHandler, reason = True, firstTime = startingTime)
+                shutdown(mqttHandler = mqttHandler, dataProxyHandler = dataProxyHandler, dataServerListener = dataServerListener, startingTime = startingTime)
                 print("Server stopped because of user")
                 quit()
 
