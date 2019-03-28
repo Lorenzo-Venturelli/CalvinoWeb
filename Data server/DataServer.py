@@ -9,6 +9,8 @@ import DataProxy
 import MQTT
 import SQL
 
+startingTime = datetime.datetime.utcnow() + datetime.timedelta(hours = +1)
+
 class DataServerAccepter(threading.Thread):
     def __init__(self, address, port, dataProxy, dataProxyLock, dataProxySyncEvent):
         self.serverAddress = address
@@ -177,6 +179,8 @@ def optimizeSQL(dataProxy, reason, firstTime = None):
         firstTime = firstTime + datetime.timedelta(hours = +1)
         lastTime = lastTime + datetime.timedelta(hours = +1)
         result = dataProxy.summarizeData(firstTime = firstTime, lastTime = lastTime)
+
+    startingTime = datetime.datetime.utcnow() + datetime.timedelta(hours = +1)
     return result
 
 def shutdown(mqttHandler, dataProxyHandler, dataServerListener, startingTime):
@@ -192,7 +196,6 @@ if __name__ == "__main__":
     dataProxySyncEvent = threading.Event()
     dataProxyLock = threading.Lock()
     lastData = None
-    startingTime = datetime.datetime.utcnow() + datetime.timedelta(hours = +1)
 
     try:
         with open(file = "./file/settings.json", mode = 'r') as settingsFile:
