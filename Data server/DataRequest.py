@@ -3,27 +3,21 @@
 import socket
 
 class DataRequest():
-    def __init__(self, SN, DT, FT, LT):
-        self.SN = SN
-        self.DT = DT
-        self.FT = FT
-        self.LT = LT
+    def __init__(self,):
         with open(file = "./file/Request_settings.json", mode = 'r') as settingsFile:
             settings = json.load(fp = settingsFile)
         self.address = settings["address"]
         self.port = settings["port"]
 
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sok:
-			sok.connect((self.address, self.port))
-            self.s = sok
-
-    def run(self):
 
 
-
-
-    #def listen(self, s):
-	#	data = s.recv(1024)
-	#		if data.decode(encoding='UTF-8') == '':
-	#	      print("Server closed connection")
-	#		print("\n" + data, end='')
+    def request(self, SN, DT, FT, LT):
+        message = {"SN" : SN, "DT" : DT, "FT" : FT, "LT" : LT}
+        jMessage = json.dumps(message)
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		s.connect((self.address, self.port))
+        s.sendall(jMessage.encode())
+        recieved = ''
+        while data.decode() != ''
+            data = s.recv(1024)
+            recieved += data  
