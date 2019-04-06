@@ -20,4 +20,7 @@ class DataRequest():
         recieved = ''
         while data.decode() != ''
             data = s.recv(1024)
-            recieved += data  
+            recieved += data.decode()
+        return recieved
+
+        
