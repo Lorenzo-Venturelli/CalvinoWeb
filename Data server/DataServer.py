@@ -132,10 +132,12 @@ class DataClient(threading.Thread):
                     status = "599"
 
                 print(result)
-                result["status"] = status
+                print("Status = " + status)
                 resultJSON = json.dumps(result)
                 resultJSON = resultJSON.encode()
+                status = str(status).encode()
                 self.clientSocket.sendall(resultJSON)
+                self.clientSocket.sendall(status)
                 
                 try:
                     response = self.clientSocket.recv(1024)
@@ -152,6 +154,7 @@ class DataClient(threading.Thread):
                         continue
                     else:
                         self.clientSocket.sendall(resultJSON)
+                        self.clientSocket.sendall(status)
                         continue
             else:
                 self.disconnect()
