@@ -100,7 +100,7 @@ class dataProxy():
         return result
 
     def __DBrequest(self, sensorNumber, dataType, firstTime, lastTime):
-        result = self.SQLProxy.request(dataI = firstTime, dataF = lastTime, sensore = sensorNumber, tipo = dataType)
+        result = self.SQLProxy.request(sensorNumber = sensorNumber, dataType = dataType, firstTime = firstTime, lastTime = lastTime)
         return result
 
 
