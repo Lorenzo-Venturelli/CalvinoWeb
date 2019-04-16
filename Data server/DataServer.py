@@ -110,8 +110,6 @@ class DataClient(threading.Thread):
                     print("Error: Received corrupted request from host " + str(self.address[0]))
                     continue
 
-                print("Received request: " + str(request))
-
                 if "SN" in request.keys() and "DT" in request.keys() and "FT" in request.keys() and "LT" in request.keys():
                     if request["SN"] != None and request["DT"] != None and request["FT"] != None and request["LT"] != None:       
                         result = self.dataProxy.requestData(sensorNumber = request["SN"], dataType = request["DT"], firstTime = request["FT"], lastTime = request["LT"])
@@ -131,8 +129,6 @@ class DataClient(threading.Thread):
                     result = dict()
                     status = "599"
 
-                print(result)
-                print("Status = " + status)
                 resultJSON = json.dumps(result)
                 resultJSON = resultJSON.encode()
                 status = str(status).encode()

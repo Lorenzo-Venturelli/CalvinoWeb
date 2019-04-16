@@ -55,7 +55,7 @@ class dataProxy():
                     elif result == False:
                         return (False, 5)
                     else:
-                        return (result)
+                        return (True, result)
 
     def summarizeData(self, firstTime, lastTime, skipCheck = False):
         if firstTime >= lastTime:
