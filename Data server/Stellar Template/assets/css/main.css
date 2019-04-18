@@ -16,7 +16,7 @@ u, i, center, dl, dt, dd, ol, ul, li, fieldset,
 form, label, legend, table, caption, tbody,
 tfoot, thead, tr, th, td, article, aside,
 canvas, details, embed, figure, figcaption,
-footer, header, hgroup, menu, nav, output, ruby,
+footer, header, hgroup, menu, nav, rtmenu, output, ruby,
 section, summary, time, mark, audio, video {
 	margin: 0;
 	padding: 0;
@@ -26,7 +26,7 @@ section, summary, time, mark, audio, video {
 	vertical-align: baseline;}
 
 article, aside, details, figcaption, figure,
-footer, header, hgroup, menu, nav, section {
+footer, header, hgroup, menu, nav, rtmenu, section {
 	display: block;}
 
 body {
@@ -3306,11 +3306,132 @@ input, select, textarea {
 
 		@media screen and (max-width: 736px) {
 
-			#nav {
+		#nav {
+			display: none;
+		}
+
+			#nav + #main {
+				padding-top: 0;
+			}
+
+	}
+
+/*	Real time menu	*/
+	#rtmenu {
+		-moz-transition: background-color 0.2s ease, border-top-left-radius 0.2s ease, border-top-right-radius 0.2s ease, padding 0.2s ease;
+		-webkit-transition: background-color 0.2s ease, border-top-left-radius 0.2s ease, border-top-right-radius 0.2s ease, padding 0.2s ease;
+		-ms-transition: background-color 0.2s ease, border-top-left-radius 0.2s ease, border-top-right-radius 0.2s ease, padding 0.2s ease;
+		transition: background-color 0.2s ease, border-top-left-radius 0.2s ease, border-top-right-radius 0.2s ease, padding 0.2s ease;
+		background-color: #ffffff;
+		color: #636363;
+		position: relative;
+		width: 100%;
+		padding: 1em;
+		background-color: #f7f7f7;
+		border-top-left-radius: 0.25em;
+		border-top-right-radius: 0.25em;
+		cursor: default;
+		text-align: center;
+	}
+
+		#rtmenu input, #rtmenu select, #rtmenu textarea {
+			color: #636363;
+		}
+
+		#rtmenu a:hover {
+			color: #636363;
+		}
+
+		#rtmenu strong, #rtmenu b {
+			color: #636363;
+		}
+
+		#rtmenu h1, #rtmenu h2, #rtmenu h3, #rtmenu h4, #rtmenu h5, #rtmenu h6 {
+			color: #636363;
+		}
+
+		#rtmenu blockquote {
+			border-left-color: #dddddd;
+		}
+
+		#rtmenu code {
+			background: rgba(222, 222, 222, 0.25);
+			border-color: #dddddd;
+		}
+
+		#rtmenu hr {
+			border-bottom-color: #dddddd;
+		}
+
+		#rtmenu + #main {
+			padding-top: 4.25em;
+		}
+
+		#rtmenu ul {
+			margin: 0;
+			padding: 0;
+			list-style: none;
+		}
+
+			#rtmenu ul li {
+				-moz-transition: margin 0.2s ease;
+				-webkit-transition: margin 0.2s ease;
+				-ms-transition: margin 0.2s ease;
+				transition: margin 0.2s ease;
+				display: inline-block;
+				margin: 0 0.35em;
+				padding: 0;
+				vertical-align: middle;
+			}
+
+				#rtmenu ul li a {
+					-moz-transition: font-size 0.2s ease;
+					-webkit-transition: font-size 0.2s ease;
+					-ms-transition: font-size 0.2s ease;
+					transition: font-size 0.2s ease;
+					display: inline-block;
+					height: 2.25em;
+					line-height: 2.25em;
+					padding: 0 1.25em;
+					border: 0;
+					border-radius: 8px;
+					box-shadow: inset 0 0 0 1px transparent;
+				}
+
+					#rtmenu ul li a:hover {
+						background-color: rgba(222, 222, 222, 0.25);
+					}
+
+					#rtmenu ul li a.active {
+						background-color: #ffffff;
+						box-shadow: none;
+					}
+
+		#rtmenu.alt {
+			position: fixed;
+			top: 0;
+			padding: 0.5em 1em;
+			background-color: rgba(247, 247, 247, 0.95);
+			border-top-left-radius: 0;
+			border-top-right-radius: 0;
+			z-index: 10000;
+		}
+
+			#rtmenu.alt ul li {
+				margin: 0 0.175em;
+			}
+
+				#rtmenu.alt ul li a {
+					font-size: 0.9em;
+				}
+
+		@media screen and (max-width: 736px) {
+
+			#rtmenu {
 				display: none;
 			}
 
-				#nav + #main {
+				#rtmenu + #main {
 					padding-top: 0;
 				}
 
