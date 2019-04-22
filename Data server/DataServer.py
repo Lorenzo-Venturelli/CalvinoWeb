@@ -11,6 +11,7 @@ import SQL
 import encriptionHandler
 
 startingTime = datetime.datetime.utcnow() + datetime.timedelta(hours = +1)
+socketBinded = True
 
 class DataServerAccepter(threading.Thread):
     def __init__(self, address, port, dataProxy, dataProxyLock, dataProxySyncEvent):
@@ -30,6 +31,7 @@ class DataServerAccepter(threading.Thread):
         except socket.error as reason:
             print("Fatal error: Data server accepter socket failed to bind")
             print("Reason: " + str(reason))
+            socketBinded = False
             return
 
         self.dataProxySyncEvent.set()
@@ -107,28 +109,59 @@ class DataClient(threading.Thread):
             answer = answer.decode()
             if answer == "200":
                 (self.myPubKey, self.myPrivKey) = encriptionHandler.generateRSA()
-                self.clientSocket.sendall(str(self.myPubKey).encode())
+                self.clientSocket.sendall(encriptionHandler.exportRSApub(self.myPubKey))
                 answer = self.clientSocket.recv(1024)
                 if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
-                    answer = answer.decode()
-                    answer = encriptionHandler.RSAdecrypt(privkey = self.myPrivKey, secret = answer)
-                    if answer != False:
-                        self.hisPubKey = answer
+                    self.hisPubKey = answer
+                    self.clientSocket.sendall(str("200").encode())
+                    answer = self.clientSocket.recv(1024)
+                    AESkey = encriptionHandler.RSAdecrypt(privkey = self.myPrivKey, secret = answer, skipDecoding = True)
+                    if AESkey != False:
+                        self.hisPubKey = encriptionHandler.AESdecrypt(key = AESkey, secret = self.hisPubKey, byteObject = True)
+                        self.hisPubKey = encriptionHandler.importRSApub(PEMfile = self.hisPubKey)
                         self.clientSocket.sendall(str("200").encode())
                         return True
                     else:
                         self.clientSocket.sendall(str("599").encode())
-        print("Security error: Error occurred while negotiating RSA keys with " + str(self.clientSocket[0]) + " connection terminated for security reasons")
+        print("Security error: Error occurred while negotiating RSA keys with " + str(self.address[0]) + " connection terminated for security reasons")
         return False
     
+    def __decryptMessage(self, AESsecret, RSAsecret, byteObject = False):
+        AESkey = encriptionHandler.RSAdecrypt(privkey = self.myPrivKey, secret = RSAsecret, skipDecoding = True)
+        raw = encriptionHandler.AESdecrypt(key = AESkey, secret = AESsecret, byteObject = byteObject)
+        return raw
+
+    def __generateEncryptedMessage(self, raw, byteObject = False):
+        AESkey = encriptionHandler.generateAES()
+        AESsecret = encriptionHandler.AESencrypt(key = AESkey, raw = raw, byteObject = byteObject)
+        RSAsecret = encriptionHandler.RSAencrypt(pubkey = self.hisPubKey, raw = AESkey)
+        return (AESsecret, RSAsecret)
+    
     def run(self):
-        resutl = self.__rsaKeyHandShake()
+        if self.address[0] == "127.0.0.1":
+            self.disconnect()
+            return
+
+        result = self._DataClient__rsaKeyHandShake()
         if result == False:
             self.disconnect()
         else:
             while self.clientConnected == True:
                 try:
                     request = self.clientSocket.recv(1024)
+                    if request != None and request != 0 and request != '' and request != str.encode(''):
+                        RSAsecret = request
+                        self.clientSocket.sendall(str("200").encode())
+                        request = self.clientSocket.recv(1024)
+                        if request != None and request != 0 and request != '' and request != str.encode(''):
+                            AESsecret = request
+                            self.clientSocket.sendall(str("200").encode())
+                        else:
+                            self.disconnect()
+                            continue
+                    else:
+                        self.disconnect()
+                        continue
                 except ConnectionResetError:
                     self.disconnect()
                     continue
@@ -136,58 +169,64 @@ class DataClient(threading.Thread):
                     print("Error: Unknown comunication error occurred with client " + str(self.address[0]))
                     continue
 
-                if request != None and request != 0 and request != '' and request != str.encode(''):
-                    request = request.decode()
-                    try:
-                        request = json.loads(request)
-                    except json.JSONDecodeError:
-                        print("Error: Received corrupted request from host " + str(self.address[0]))
-                        continue
+                request = self._DataClient__decryptMessage(AESsecret = AESsecret, RSAsecret = RSAsecret)
+                try:
+                    request = json.loads(request)
+                except json.JSONDecodeError:
+                    print("Error: Received corrupted request from host " + str(self.address[0]))
+                    continue
 
-                    if "SN" in request.keys() and "DT" in request.keys() and "FT" in request.keys() and "LT" in request.keys():
-                        if request["SN"] != None and request["DT"] != None and request["FT"] != None and request["LT"] != None:       
-                            result = self.dataProxy.requestData(sensorNumber = request["SN"], dataType = request["DT"], firstTime = request["FT"], lastTime = request["LT"])
-                            if result[0] == True:
-                                result = result[1]
-                                status = "200"
-                            else:
-                                if result[1] == 1 or result[1] == 2 or result[1] == 3:
-                                    status = "499"
-                                elif result[1] == 4 or result[1] == 5 or result[1] == 5:
-                                    status = "399"
-                                result = dict()
+                if "SN" in request.keys() and "DT" in request.keys() and "FT" in request.keys() and "LT" in request.keys():
+                    if request["SN"] != None and request["DT"] != None and request["FT"] != None and request["LT"] != None:       
+                        result = self.dataProxy.requestData(sensorNumber = request["SN"], dataType = request["DT"], firstTime = request["FT"], lastTime = request["LT"])
+                        if result[0] == True:
+                            result = result[1]
+                            status = "200"
                         else:
+                            if result[1] == 1 or result[1] == 2 or result[1] == 3:
+                                status = "499"
+                            elif result[1] == 4 or result[1] == 5 or result[1] == 5:
+                                status = "399"
                             result = dict()
-                            status = "599"
                     else:
                         result = dict()
                         status = "599"
+                else:
+                    result = dict()
+                    status = "599"
 
-                    resultJSON = json.dumps(result)
-                    resultJSON = resultJSON.encode()
-                    status = str(status).encode()
-                    self.clientSocket.sendall(resultJSON)
-                    self.clientSocket.sendall(status)
-                    
-                    try:
-                        response = self.clientSocket.recv(1024)
-                    except ConnectionResetError:
+                resultJSON = json.dumps(result)
+                status = status.encode()
+                (resultJSON, key) = self._DataClient__generateEncryptedMessage(raw = resultJSON)
+                
+                try:
+                    self.clientSocket.sendall(key)
+                    answer = self.clientSocket.recv(1024)
+                    if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
+                        if answer.decode() == "200":
+                            self.clientSocket.sendall(resultJSON)
+                            answer = self.clientSocket.recv(1024)
+                            if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
+                                if answer.decode() == "200":
+                                    self.clientSocket.sendall(status)
+                                else:
+                                    self.disconnect()
+                                    continue
+                            else:
+                                self.disconnect()
+                                continue
+                        else:
+                            self.disconnect()
+                            continue
+                    else:
                         self.disconnect()
                         continue
-                    except Exception:
-                        print("Error: Unknown comunication error occurred with client " + str(self.address[0]))
-                        continue
-
-                    if response != None and response != 0 and response != '' and request != str.encode(''):
-                        response = response.decode()
-                        if response == "200":
-                            continue
-                        else:
-                            self.clientSocket.sendall(resultJSON)
-                            self.clientSocket.sendall(status)
-                            continue
-                else:
+                except ConnectionResetError:
                     self.disconnect()
+                    continue
+                except Exception as reason:
+                    print("Error: Unknown comunication error occurred with client " + str(self.address[0]))
+                    continue
         
         print("Client " + str(self.address[0]) + " disconnected")
         return
@@ -216,7 +255,8 @@ def optimizeSQL(dataProxy, reason, firstTime = None):
 
 def shutdown(mqttHandler, dataProxyHandler, dataServerListener, startingTime):
     mqttHandler.stop()
-    dataServerListener.stop()
+    if socketBinded == True:
+        dataServerListener.stop()
     mqttHandler.join()
     dataServerListener.join()
     optimizeSQL(dataProxy = dataProxyHandler, reason = True, firstTime = startingTime)
@@ -335,13 +375,16 @@ if __name__ == "__main__":
             print("Server stopped because of fatal socket error")
             quit()
         else:
-            try:
-                while True:
-                    time.sleep(3600)
-                    optimizeSQL(dataProxy = dataProxyHandler, reason = False)
-            except KeyboardInterrupt:
+            if socketBinded != True:
                 shutdown(mqttHandler = mqttHandler, dataProxyHandler = dataProxyHandler, dataServerListener = dataServerListener, startingTime = startingTime)
-                print("Server stopped because of user")
-                quit()
+            else:
+                try:
+                    while True:
+                        time.sleep(3600)
+                        optimizeSQL(dataProxy = dataProxyHandler, reason = False)
+                except KeyboardInterrupt:
+                    shutdown(mqttHandler = mqttHandler, dataProxyHandler = dataProxyHandler, dataServerListener = dataServerListener, startingTime = startingTime)
+                    print("Server stopped because of user")
+                    quit()
 
         

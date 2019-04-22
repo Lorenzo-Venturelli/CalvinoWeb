@@ -24,35 +24,55 @@ def generateRSA():
     return (pubkey, privkey)
 
 def generateAES():
-    key = hashlib.sha256(key.encode()).digest()
+    key = hashlib.sha256(rsa.randnum.read_random_bits(128)).digest()
     return key
 
-def AESencrypt(key, raw):
-    raw = pad(raw)
+def AESencrypt(key, raw, byteObject = False):
+    if byteObject == False:
+        raw = pad(raw)
+    else:
+        raw = raw.decode()
+        raw = pad(raw)
+        raw = raw.encode()
     iv = Random.new().read(AES.block_size)
     chiper = AES.new(key, AES.MODE_CBC, iv)
     secret = base64.b64encode(iv + chiper.encrypt(raw))
     return secret
 
-def AESdecrypt(key, secret):
+def AESdecrypt(key, secret, byteObject = False):
     secret = base64.b64decode(secret)
     iv = secret[:AES.block_size]
     cipher = AES.new(key, AES.MODE_CBC, iv)
-    raw = unpad(cipher.decrypt(secret[AES.block_size:])).decode('utf-8')
+    raw = cipher.decrypt(secret[AES.block_size:])
+    if byteObject == False:
+        raw = unpad(raw)
+        raw = raw.decode()
+    else:
+        raw = raw.decode()
+        raw = unpad(raw)
+        raw = raw.encode()
     return raw
 
 def RSAencrypt(pubkey, raw):
-    raw = raw.encode('UTF-8')
+    if type(raw) is not bytes:
+        raw = raw.encode('UTF-8')
     secret = rsa.encrypt(message = raw, pub_key = pubkey)
     return secret
 
-def RSAdecrypt(privkey, secret):
+def RSAdecrypt(privkey, secret, skipDecoding = False):
     try:
         raw = rsa.decrypt(crypto = secret, priv_key = privkey)
-        raw = raw.decode('UTF-8')
+        if skipDecoding == False:
+            raw = raw.decode('UTF-8')
         return raw
     except rsa.pkcs1.DecryptionError:
         return False
+
+def exportRSApub(pubkey):
+    return pubkey.save_pkcs1(format = "PEM")
+
+def importRSApub(PEMfile):
+    return rsa.PublicKey.load_pkcs1(keyfile = PEMfile, format = "PEM")
         
 if __name__ == "__main__":
     print("Fatal error: This program have to be used as a module")
