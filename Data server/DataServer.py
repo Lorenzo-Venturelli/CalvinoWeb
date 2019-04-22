@@ -8,6 +8,7 @@ import datetime
 import DataProxy
 import MQTT
 import SQL
+import encriptionHandler
 
 startingTime = datetime.datetime.utcnow() + datetime.timedelta(hours = +1)
 
@@ -89,54 +90,45 @@ class DataClient(threading.Thread):
         self.dataProxyLock = dataProxyLock
         self.dataProxySyncEvent = dataProxySyncEvent
         self.clientConnected = True
+        self.myPubKey = None
+        self.myPrivKey = None
+        self.hisPubKey = None
         threading.Thread.__init__(self, name = "Data Client " + str(address[0]), daemon = True)
+
+    def disconnect(self):
+        self.clientConnected = False
+        self.clientSocket.close()
+        return
+
+    def __rsaKeyHandShake(self):
+        self.clientSocket.sendall(str("199").encode())
+        answer = self.clientSocket.recv(1024)
+        if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
+            answer = answer.decode()
+            if answer == "200":
+                (self.myPubKey, self.myPrivKey) = encriptionHandler.generateRSA()
+                self.clientSocket.sendall(str(self.myPubKey).encode())
+                answer = self.clientSocket.recv(1024)
+                if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
+                    answer = answer.decode()
+                    answer = encriptionHandler.RSAdecrypt(privkey = self.myPrivKey, secret = answer)
+                    if answer != False:
+                        self.hisPubKey = answer
+                        self.clientSocket.sendall(str("200").encode())
+                        return True
+                    else:
+                        self.clientSocket.sendall(str("599").encode())
+        print("Security error: Error occurred while negotiating RSA keys with " + str(self.clientSocket[0]) + " connection terminated for security reasons")
+        return False
     
     def run(self):
-        while self.clientConnected == True:
-            try:
-                request = self.clientSocket.recv(1024)
-            except ConnectionResetError:
-                self.disconnect()
-                continue
-            except Exception:
-                print("Error: Unknown comunication error occurred with client " + str(self.address[0]))
-                continue
-
-            if request != None and request != 0 and request != '' and request != str.encode(''):
-                request = request.decode()
+        resutl = self.__rsaKeyHandShake()
+        if result == False:
+            self.disconnect()
+        else:
+            while self.clientConnected == True:
                 try:
-                    request = json.loads(request)
-                except json.JSONDecodeError:
-                    print("Error: Received corrupted request from host " + str(self.address[0]))
-                    continue
-
-                if "SN" in request.keys() and "DT" in request.keys() and "FT" in request.keys() and "LT" in request.keys():
-                    if request["SN"] != None and request["DT"] != None and request["FT"] != None and request["LT"] != None:       
-                        result = self.dataProxy.requestData(sensorNumber = request["SN"], dataType = request["DT"], firstTime = request["FT"], lastTime = request["LT"])
-                        if result[0] == True:
-                            result = result[1]
-                            status = "200"
-                        else:
-                            if result[1] == 1 or result[1] == 2 or result[1] == 3:
-                                status = "499"
-                            elif result[1] == 4 or result[1] == 5 or result[1] == 5:
-                                status = "399"
-                            result = dict()
-                    else:
-                        result = dict()
-                        status = "599"
-                else:
-                    result = dict()
-                    status = "599"
-
-                resultJSON = json.dumps(result)
-                resultJSON = resultJSON.encode()
-                status = str(status).encode()
-                self.clientSocket.sendall(resultJSON)
-                self.clientSocket.sendall(status)
-                
-                try:
-                    response = self.clientSocket.recv(1024)
+                    request = self.clientSocket.recv(1024)
                 except ConnectionResetError:
                     self.disconnect()
                     continue
@@ -144,24 +136,64 @@ class DataClient(threading.Thread):
                     print("Error: Unknown comunication error occurred with client " + str(self.address[0]))
                     continue
 
-                if response != None and response != 0 and response != '' and request != str.encode(''):
-                    response = response.decode()
-                    if response == "200":
+                if request != None and request != 0 and request != '' and request != str.encode(''):
+                    request = request.decode()
+                    try:
+                        request = json.loads(request)
+                    except json.JSONDecodeError:
+                        print("Error: Received corrupted request from host " + str(self.address[0]))
                         continue
+
+                    if "SN" in request.keys() and "DT" in request.keys() and "FT" in request.keys() and "LT" in request.keys():
+                        if request["SN"] != None and request["DT"] != None and request["FT"] != None and request["LT"] != None:       
+                            result = self.dataProxy.requestData(sensorNumber = request["SN"], dataType = request["DT"], firstTime = request["FT"], lastTime = request["LT"])
+                            if result[0] == True:
+                                result = result[1]
+                                status = "200"
+                            else:
+                                if result[1] == 1 or result[1] == 2 or result[1] == 3:
+                                    status = "499"
+                                elif result[1] == 4 or result[1] == 5 or result[1] == 5:
+                                    status = "399"
+                                result = dict()
+                        else:
+                            result = dict()
+                            status = "599"
                     else:
-                        self.clientSocket.sendall(resultJSON)
-                        self.clientSocket.sendall(status)
+                        result = dict()
+                        status = "599"
+
+                    resultJSON = json.dumps(result)
+                    resultJSON = resultJSON.encode()
+                    status = str(status).encode()
+                    self.clientSocket.sendall(resultJSON)
+                    self.clientSocket.sendall(status)
+                    
+                    try:
+                        response = self.clientSocket.recv(1024)
+                    except ConnectionResetError:
+                        self.disconnect()
                         continue
-            else:
-                self.disconnect()
+                    except Exception:
+                        print("Error: Unknown comunication error occurred with client " + str(self.address[0]))
+                        continue
+
+                    if response != None and response != 0 and response != '' and request != str.encode(''):
+                        response = response.decode()
+                        if response == "200":
+                            continue
+                        else:
+                            self.clientSocket.sendall(resultJSON)
+                            self.clientSocket.sendall(status)
+                            continue
+                else:
+                    self.disconnect()
         
         print("Client " + str(self.address[0]) + " disconnected")
         return
 
-    def disconnect(self):
-        self.clientConnected = False
-        self.clientSocket.close()
-        return
+
+
 
 def optimizeSQL(dataProxy, reason, firstTime = None):
     if reason == True:
