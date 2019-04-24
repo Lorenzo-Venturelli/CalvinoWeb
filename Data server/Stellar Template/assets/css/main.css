@@ -3325,8 +3325,8 @@ input, select, textarea {
 		background-color: #ffffff;
 		color: #636363;
 		position: relative;
-		width: 100%;
-		padding: 1em;
+		width: 50%;
+		
 		background-color: #f7f7f7;
 		border-top-left-radius: 0.25em;
 		border-top-right-radius: 0.25em;
@@ -3371,6 +3371,8 @@ input, select, textarea {
 			margin: 0;
 			padding: 0;
 			list-style: none;
+			text-align: center;
+			width: 100%;
 		}
 
 			#rtmenu ul li {
@@ -3381,7 +3383,7 @@ input, select, textarea {
 				display: inline-block;
 				margin: 0 0.35em;
 				padding: 0;
-				vertical-align: middle;
+				vertical-align: top;
 			}
 
 				#rtmenu ul li a {
@@ -3425,10 +3427,10 @@ input, select, textarea {
 					font-size: 0.9em;
 				}
 
-		@media screen and (max-width: 736px) {
+		@media screen and (max-width: 834px) {
 
 			#rtmenu {
-				display: none;
+				width: 100%;
 			}
 
 				#rtmenu + #main {
