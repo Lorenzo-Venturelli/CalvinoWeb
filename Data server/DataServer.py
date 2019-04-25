@@ -21,20 +21,12 @@ class DataServerAccepter(threading.Thread):
         self.dataProxyLock = dataProxyLock
         self.dataProxySyncEvent = dataProxySyncEvent
         self.serverSocket = socket.socket(family = socket.AF_INET, type = socket.SOCK_STREAM)
+        self.serverSocket.bind((str(self.serverAddress), int(self.serverPort)))
         self.__running = True
         self.connectedClient = dict()
         threading.Thread.__init__(self, name = "Data Server Accepter Thread", daemon = False)
 
     def run(self):
-        try:
-            self.serverSocket.bind((str(self.serverAddress), int(self.serverPort)))
-        except socket.error as reason:
-            print("Fatal error: Data server accepter socket failed to bind")
-            print("Reason: " + str(reason))
-            socketBinded = False
-            return
-
-        self.dataProxySyncEvent.set()
         self.serverSocket.listen(5)
         while self.__running == True:
             try:
@@ -59,6 +51,7 @@ class DataServerAccepter(threading.Thread):
             self.__garbageCollector()
 
         self.__garbageCollector()
+        self.serverSocket.close()
         return
     
     def __garbageCollector(self):
@@ -231,9 +224,6 @@ class DataClient(threading.Thread):
         print("Client " + str(self.address[0]) + " disconnected")
         return
 
-
-
-
 def optimizeSQL(dataProxy, reason, firstTime = None):
     if reason == True:
         if firstTime != None:
@@ -255,8 +245,7 @@ def optimizeSQL(dataProxy, reason, firstTime = None):
 
 def shutdown(mqttHandler, dataProxyHandler, dataServerListener, startingTime):
     mqttHandler.stop()
-    if socketBinded == True:
-        dataServerListener.stop()
+    dataServerListener.stop()
     mqttHandler.join()
     dataServerListener.join()
     optimizeSQL(dataProxy = dataProxyHandler, reason = True, firstTime = startingTime)
@@ -357,34 +346,21 @@ if __name__ == "__main__":
     if mqttSyncEvent[1].is_set() == True:
         print("Fatal error: MQTT connection initialization error")
         print("Server stopped because fatal MQTT connection error")
+        dataServerListener.stop()
         quit()
     else:
         print("MQTT connection initialized")
         mqttSyncEvent[0].clear()
         mqttSyncEvent[1].clear()
-
-        if dataProxySyncEvent.is_set == True:
-            dataProxySyncEvent.clear()
-
         dataServerListener.start()
 
-        if dataProxySyncEvent.wait(timeout = 2) == False:
-            print("Fatal error: Data Server can not bind address")
-            mqttHandler.stop()
-            mqttHandler.join()
-            print("Server stopped because of fatal socket error")
+        try:
+            while True:
+                time.sleep(3600)
+                optimizeSQL(dataProxy = dataProxyHandler, reason = False)
+        except KeyboardInterrupt:
+            shutdown(mqttHandler = mqttHandler, dataProxyHandler = dataProxyHandler, dataServerListener = dataServerListener, startingTime = startingTime)
+            print("Server stopped because of user")
             quit()
-        else:
-            if socketBinded != True:
-                shutdown(mqttHandler = mqttHandler, dataProxyHandler = dataProxyHandler, dataServerListener = dataServerListener, startingTime = startingTime)
-            else:
-                try:
-                    while True:
-                        time.sleep(3600)
-                        optimizeSQL(dataProxy = dataProxyHandler, reason = False)
-                except KeyboardInterrupt:
-                    shutdown(mqttHandler = mqttHandler, dataProxyHandler = dataProxyHandler, dataServerListener = dataServerListener, startingTime = startingTime)
-                    print("Server stopped because of user")
-                    quit()
 
         
