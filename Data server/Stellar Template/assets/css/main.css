@@ -16,7 +16,7 @@ u, i, center, dl, dt, dd, ol, ul, li, fieldset,
 form, label, legend, table, caption, tbody,
 tfoot, thead, tr, th, td, article, aside,
 canvas, details, embed, figure, figcaption,
-footer, header, hgroup, menu, nav, rtmenu, output, ruby,
+footer, header, hgroup, menu, nav, output, ruby,
 section, summary, time, mark, audio, video {
 	margin: 0;
 	padding: 0;
@@ -26,7 +26,7 @@ section, summary, time, mark, audio, video {
 	vertical-align: baseline;}
 
 article, aside, details, figcaption, figure,
-footer, header, hgroup, menu, nav, rtmenu, section {
+footer, header, hgroup, menu, nav, section {
 	display: block;}
 
 body {
@@ -3317,15 +3317,12 @@ input, select, textarea {
 	}
 
 /*	Real time menu	*/
-	#rtmenu {
-		-moz-transition: background-color 0.2s ease, border-top-left-radius 0.2s ease, border-top-right-radius 0.2s ease, padding 0.2s ease;
-		-webkit-transition: background-color 0.2s ease, border-top-left-radius 0.2s ease, border-top-right-radius 0.2s ease, padding 0.2s ease;
-		-ms-transition: background-color 0.2s ease, border-top-left-radius 0.2s ease, border-top-right-radius 0.2s ease, padding 0.2s ease;
-		transition: background-color 0.2s ease, border-top-left-radius 0.2s ease, border-top-right-radius 0.2s ease, padding 0.2s ease;
-		background-color: #ffffff;
-		color: #636363;
+	.rtmenu 
+	{
+		
+		
 		position: relative;
-		width: 50%;
+		width: 100%;
 		
 		background-color: #f7f7f7;
 		border-top-left-radius: 0.25em;
@@ -3367,47 +3364,33 @@ input, select, textarea {
 			padding-top: 4.25em;
 		}
 
-		#rtmenu ul {
+		.rtmenu ul 
+		{
 			margin: 0;
-			padding: 0;
+			padding-left: 0;
 			list-style: none;
 			text-align: center;
-			width: 100%;
+			width: auto;
 		}
 
-			#rtmenu ul li {
-				-moz-transition: margin 0.2s ease;
-				-webkit-transition: margin 0.2s ease;
-				-ms-transition: margin 0.2s ease;
-				transition: margin 0.2s ease;
-				display: inline-block;
-				margin: 0 0.35em;
-				padding: 0;
-				vertical-align: top;
-			}
+		.rtmenu ul span
+		{
+			width: auto;
+		}
 
-				#rtmenu ul li a {
-					-moz-transition: font-size 0.2s ease;
-					-webkit-transition: font-size 0.2s ease;
-					-ms-transition: font-size 0.2s ease;
-					transition: font-size 0.2s ease;
-					display: inline-block;
-					height: 2.25em;
-					line-height: 2.25em;
-					padding: 0 1.25em;
-					border: 0;
-					border-radius: 8px;
-					box-shadow: inset 0 0 0 1px transparent;
-				}
+		.rtmenu ul li 
+		{
+			display: inline-block;
+			margin: 0 0.35em;
+			padding: 0;
+			vertical-align: top;
+			width: auto;
+		}
 
-					#rtmenu ul li a:hover {
-						background-color: rgba(222, 222, 222, 0.25);
-					}
-
-					#rtmenu ul li a.active {
-						background-color: #ffffff;
-						box-shadow: none;
-					}
+		.rtmenu select
+		{
+			width: auto
+		}
 
 		#rtmenu.alt {
 			position: fixed;
@@ -3429,11 +3412,11 @@ input, select, textarea {
 
 		@media screen and (max-width: 834px) {
 
-			#rtmenu {
+			.rtmenu {
 				width: 100%;
 			}
 
-				#rtmenu + #main {
+				.rtmenu + #main {
 					padding-top: 0;
 				}
 
