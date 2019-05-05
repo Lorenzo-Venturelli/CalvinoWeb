@@ -3422,6 +3422,25 @@ input, select, textarea {
 
 		}
 
+/*	Real-time data	*/
+	.rtcontainer
+	{
+		display: flex;
+		flex-wrap: wrap;
+	}
+
+	.rtdata
+	{
+		width: 25%;
+		height: 100%;
+		text-align: center;
+	}
+
+	.rtcontainer .rtdata h3
+	{
+		font-size: 300%
+	}
+
 /* Main */
 
 	#main {
