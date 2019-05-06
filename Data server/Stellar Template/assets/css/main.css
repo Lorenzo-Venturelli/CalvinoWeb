@@ -3319,12 +3319,8 @@ input, select, textarea {
 /*	Real time menu	*/
 	.rtmenu 
 	{
-		
-		
 		position: relative;
 		width: 100%;
-		
-		background-color: #f7f7f7;
 		border-top-left-radius: 0.25em;
 		border-top-right-radius: 0.25em;
 		cursor: default;
@@ -3366,7 +3362,7 @@ input, select, textarea {
 
 		.rtmenu ul 
 		{
-			margin: 0;
+			margin: 3px;
 			padding-left: 0;
 			list-style: none;
 			text-align: center;
@@ -3376,6 +3372,7 @@ input, select, textarea {
 		.rtmenu ul span
 		{
 			width: auto;
+			margin: 0%;
 		}
 
 		.rtmenu ul li 
@@ -3438,7 +3435,8 @@ input, select, textarea {
 
 	.rtcontainer .rtdata h3
 	{
-		font-size: 300%
+		font-size: 300%;
+		margin: 0;
 	}
 
 /* Main */
