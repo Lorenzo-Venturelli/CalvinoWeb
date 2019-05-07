@@ -1,9 +1,9 @@
-#riceve n-sensore (SN), data type (DT), first e last time (FT,LT), si connette, crea un json e lo invia tramite socket al data server
 #2-websocket in ascolto riceve dati dal client web, e lo manda all'altra classe per poi inviarlo al data server
 import socket
 import json
 import threading
 import encriptionHandler
+import queue
 
 class DataRequest(threading.Thread):
     def __init__(self, serverAddress, serverPort):
@@ -13,6 +13,9 @@ class DataRequest(threading.Thread):
         self.myPubKey = None
         self.myPrivKey = None
         self.hisPubkey = None
+        self.running = True
+        self.reaquestQueue = queue.Queue()
+        self.responseQueue = queue.Queue()
         threading.Thread.__init__(self, name = "Data Client Thread", daemon = False)
 
     def disconnect(self):
@@ -68,7 +71,15 @@ class DataRequest(threading.Thread):
         if result == False:
             return
         
-        message = {"SN" : 3, "DT" : "temperatura", "FT" : '2019-03-28 19:00:00', "LT" : '2019-03-28 22:00:00'}
+        while self.running == True:
+            message = self.reaquestQueue.get()
+            result = self.__executeRequest(message = message)
+            if result == None:
+                self.responseQueue.put("None")
+            else:
+                self.responseQueue.put(result)
+
+    def __executeRequest(self, message):
         jMessage = json.dumps(message)
         (message, key) = self._DataRequest__generateEncryptedMessage(raw = jMessage, byteObject = False)
         self.clientSocket.sendall(key)
@@ -93,18 +104,10 @@ class DataRequest(threading.Thread):
                                 answer = self.clientSocket.recv(1024)
                                 if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
                                     if answer.decode() == "200":
-                                        print(plainAnswer)
-                                        self.disconnect()
-                                        return
+                                        return(plainAnswer)
         print("Comunication error: An error occurred while comunicating with Data Server")
+        return None
 
-        
-
-
-if __name__ == '__main__':
-    with open(file = "./file/Request_settings.json", mode = 'r') as settingsFile:
-        settings = json.load(fp = settingsFile)
-
-    requestsHandler = DataRequest(serverAddress = settings["address"], serverPort = settings["port"])
-    requestsHandler.start()
+    def insertRequest(self, request):
+        if 
 

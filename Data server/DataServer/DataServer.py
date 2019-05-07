@@ -10,7 +10,8 @@ import MQTT
 import SQL
 import encriptionHandler
 
-startingTime = datetime.datetime.utcnow() + datetime.timedelta(hours = +1)
+startingTime = datetime.datetime.utcnow()
+startingTime = startingTime.astimezone()
 socketBinded = True
 
 class DataServerAccepter(threading.Thread):
@@ -217,7 +218,7 @@ class DataClient(threading.Thread):
                 except ConnectionResetError:
                     self.disconnect()
                     continue
-                except Exception as reason:
+                except Exception:
                     print("Error: Unknown comunication error occurred with client " + str(self.address[0]))
                     continue
         
@@ -231,8 +232,9 @@ def optimizeSQL(dataProxy, reason, firstTime = None):
         else:
             return False
     else:
-        lastTime = datetime.datetime.utcnow() + datetime.timedelta(hours = +1)
-        firstTime = datetime.datetime.utcnow()
+        firstTime = datetime.datetime.utcnow().astimezone()
+        firstTime = firstTime + datetime.timedelta(hours = -1)
+        lastTime = firstTime
 
     result = dataProxy.summarizeData(firstTime = firstTime, lastTime = lastTime)
     if result == True and reason == True:
@@ -240,7 +242,8 @@ def optimizeSQL(dataProxy, reason, firstTime = None):
         lastTime = lastTime + datetime.timedelta(hours = +1)
         result = dataProxy.summarizeData(firstTime = firstTime, lastTime = lastTime)
 
-    startingTime = datetime.datetime.utcnow() + datetime.timedelta(hours = +1)
+    startingTime = datetime.datetime.utcnow()
+    startingTime = startingTime.astimezone()
     return result
 
 def shutdown(mqttHandler, dataProxyHandler, dataServerListener, startingTime):
@@ -258,7 +261,7 @@ if __name__ == "__main__":
     lastData = None
 
     try:
-        with open(file = "./file/settings.json", mode = 'r') as settingsFile:
+        with open(file = "./File/settings.json", mode = 'r') as settingsFile:
             settings = json.load(fp = settingsFile)
     except FileNotFoundError:
         print("Error: Settings file not found")

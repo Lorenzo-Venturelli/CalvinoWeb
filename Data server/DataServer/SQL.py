@@ -26,7 +26,7 @@ class CalvinoDB():
     def insert(self, sensorNumber, dataType, value, timestamp = None):
         ID = self.__randomN(digits = 16)
         if timestamp == None:
-            timestamp = str(datetime.datetime.utcnow() + datetime.timedelta(hours=+1))
+            timestamp = str(datetime.datetime.utcnow().astimezone())
             timestamp = "\'" + timestamp[:-7]  + "\'"   # Format timestamp in MS SQL 'datetime' format
         else:
             timestamp = "\'" + timestamp + "\'"
