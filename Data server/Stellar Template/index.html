@@ -66,7 +66,7 @@
 												<span><h3>Seleziona il sensore</h3></span>
 												<span class="rtmenu">
 													<li class="rtmenu">
-														<select name="SN" class="rtmenu">
+														<select name="RTSN" class="rtmenu">
 														<option value="1", selected = "selected">1</option>
 														<option value="2">2</option>
 														<option value="3">3</option>
@@ -110,38 +110,50 @@
 						<!-- Second Section -->
 							<section id="second" class="main special">
 								<header class="major">
-									<h2>Ipsum consequat</h2>
-									<p>Donec imperdiet consequat consequat. Suspendisse feugiat congue<br />
-									posuere. Nulla massa urna, fermentum eget quam aliquet.</p>
+									<h2>Dati storici</h2>
 								</header>
-								<ul class="statistics">
-									<li class="style1">
-										<span class="icon fa-code-fork"></span>
-										<strong>5,120</strong> Etiam
-									</li>
-									<li class="style2">
-										<span class="icon fa-folder-open-o"></span>
-										<strong>8,192</strong> Magna
-									</li>
-									<li class="style3">
-										<span class="icon fa-signal"></span>
-										<strong>2,048</strong> Tempus
-									</li>
-									<li class="style4">
-										<span class="icon fa-laptop"></span>
-										<strong>4,096</strong> Aliquam
-									</li>
-									<li class="style5">
-										<span class="icon fa-diamond"></span>
-										<strong>1,024</strong> Nullam
-									</li>
-								</ul>
-								<p class="content">Nam elementum nisl et mi a commodo porttitor. Morbi sit amet nisl eu arcu faucibus hendrerit vel a risus. Nam a orci mi, elementum ac arcu sit amet, fermentum pellentesque et purus. Integer maximus varius lorem, sed convallis diam accumsan sed. Etiam porttitor placerat sapien, sed eleifend a enim pulvinar faucibus semper quis ut arcu. Ut non nisl a mollis est efficitur vestibulum. Integer eget purus nec nulla mattis et accumsan ut magna libero. Morbi auctor iaculis porttitor. Sed ut magna ac risus et hendrerit scelerisque. Praesent eleifend lacus in lectus aliquam porta. Cras eu ornare dui curabitur lacinia.</p>
-								<footer class="major">
-									<ul class="actions special">
-										<li><a href="generic.html" class="button">Learn More</a></li>
-									</ul>
-								</footer>
+								<div>
+									<div class="graphNav">
+										<div class="option">
+											<h1>Sensore</h1>
+											<select name="GSN">
+												<option value="1", selected = "selected">1</option>
+												<option value="2">2</option>
+												<option value="3">3</option>
+												<option value="4">4</option>
+												<option value="5">5</option>
+												<option value="6">6</option>
+												<option value="7">7</option>
+												<option value="8">8</option>
+												<option value="9">9</option>
+												<option value="10">10</option>
+											</select>
+										</div>			
+										<div class="option">
+											<h1>Tipo di dato</h1>
+											<select name="GDT">
+												<option value="Temperatura", selected = "selected">Temperatura</option>
+												<option value="Luce">Luce</option>
+												<option value="Pressione">Pressione</option>
+												<option value="Altitudine">Altitudine</option>
+											</select>
+										</div>			
+										<div class="option">
+											<h1>Inizio</h1>
+											<input type="date" name="GFTD">
+											<input type="time" name="GFTT">
+										</div>			
+										<div class="option">
+											<h1>Fine</h1>
+											<input type="date" name="GLTD">
+											<input type="time" name="GLTT">
+										</div>									
+									</div>
+									<div class="graphCont">
+										<canvas id="graph" class="graph"></canvas>
+									</div>
+									<a class="button">Vai</a>
+								</div>
 							</section>
 
 					</div>
@@ -178,6 +190,6 @@
 			<script src="assets/js/breakpoints.min.js"></script>
 			<script src="assets/js/util.js"></script>
 			<script src="assets/js/main.js"></script>
-
+			<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.min.js"></script>
 	</body>
 </html>
