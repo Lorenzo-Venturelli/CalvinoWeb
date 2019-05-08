@@ -5,7 +5,7 @@ import DataClient
 
 if __name__ == "__main__":
     try:
-        with open(file = "./Files/middleSettings.json", mode = "r") as settingsFile:
+        with open(file = "../Files/middleSettings.json", mode = "r") as settingsFile:
             settings = json.load(settingsFile)
     except FileNotFoundError:
         print("Fatal Error: Settings file not found. Unable to startup")

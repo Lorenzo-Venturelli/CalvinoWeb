@@ -98,6 +98,7 @@ class dataProxy():
     def __DBinsert(self, sensorNumber, dataType, dataValue):
         result = self.SQLProxy.insert(sensorNumber = sensorNumber, dataType = dataType, value = dataValue, timestamp = None)
         return result
+        
 
     def __DBrequest(self, sensorNumber, dataType, firstTime, lastTime):
         result = self.SQLProxy.request(sensorNumber = sensorNumber, dataType = dataType, firstTime = firstTime, lastTime = lastTime)

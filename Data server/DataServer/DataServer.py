@@ -10,7 +10,7 @@ import MQTT
 import SQL
 import encriptionHandler
 
-startingTime = datetime.datetime.utcnow()
+startingTime = datetime.datetime.now()
 startingTime = startingTime.astimezone()
 socketBinded = True
 
@@ -232,7 +232,7 @@ def optimizeSQL(dataProxy, reason, firstTime = None):
         else:
             return False
     else:
-        firstTime = datetime.datetime.utcnow().astimezone()
+        firstTime = datetime.datetime.now()
         firstTime = firstTime + datetime.timedelta(hours = -1)
         lastTime = firstTime
 
@@ -242,7 +242,7 @@ def optimizeSQL(dataProxy, reason, firstTime = None):
         lastTime = lastTime + datetime.timedelta(hours = +1)
         result = dataProxy.summarizeData(firstTime = firstTime, lastTime = lastTime)
 
-    startingTime = datetime.datetime.utcnow()
+    startingTime = datetime.datetime.now()
     startingTime = startingTime.astimezone()
     return result
 
@@ -261,7 +261,7 @@ if __name__ == "__main__":
     lastData = None
 
     try:
-        with open(file = "./File/settings.json", mode = 'r') as settingsFile:
+        with open(file = "../Files/settings.json", mode = 'r') as settingsFile:
             settings = json.load(fp = settingsFile)
     except FileNotFoundError:
         print("Error: Settings file not found")

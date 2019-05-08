@@ -1,4 +1,3 @@
-#2-websocket in ascolto riceve dati dal client web, e lo manda all'altra classe per poi inviarlo al data server
 import socket
 import json
 import threading
@@ -20,6 +19,8 @@ class DataRequest(threading.Thread):
 
     def disconnect(self):
         self.clientSocket.close()
+        self.running = False
+        self.reaquestQueue.put(False)
         return
 
     def __rsaHandShake(self):
@@ -73,9 +74,11 @@ class DataRequest(threading.Thread):
         
         while self.running == True:
             message = self.reaquestQueue.get()
+            if message == False:
+                continue
             result = self.__executeRequest(message = message)
             if result == None:
-                self.responseQueue.put("None")
+                self.responseQueue.put(False)
             else:
                 self.responseQueue.put(result)
 
@@ -109,5 +112,23 @@ class DataRequest(threading.Thread):
         return None
 
     def insertRequest(self, request):
-        if 
+        if self.running == True:
+            if type(request) is dict:
+                keys = request.keys()
+                if "SN" in keys and "DT" in keys and "FT" in keys and "LT" in keys:
+                    self.reaquestQueue.put(request)
+                    return True
+                else:
+                    return False
+            else:
+                return False
+        else:
+            return False
+
+    def getResponse(self):
+        if self.running == True:
+            response = self.responseQueue.get()
+            return response
+        else:
+            return False
 
