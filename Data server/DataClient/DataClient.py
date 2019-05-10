@@ -5,9 +5,10 @@ import encriptionHandler
 import queue
 
 class DataRequest(threading.Thread):
-    def __init__(self, serverAddress, serverPort):
+    def __init__(self, serverAddress, serverPort, syncEvent):
         self.serverAddress = serverAddress
         self.serverPort = int(serverPort)
+        self.syncEvent = syncEvent
         self.clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.myPubKey = None
         self.myPrivKey = None
@@ -46,6 +47,7 @@ class DataRequest(threading.Thread):
                             if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
                                 answer = answer.decode()
                                 if answer == "200":
+                                    print("RSA handshake succeded")
                                     return True
         print("Fatal security error: Error occurred while negotiating RSA keys with Data Server. Connection closed for security reasons")
         return False
@@ -66,12 +68,14 @@ class DataRequest(threading.Thread):
             self.clientSocket.connect((self.serverAddress, self.serverPort))
         except Exception:
             print("Fatal error: Unable to connect to  Data Server")
-            return
+            self.disconnect()
 
-        result = self._DataRequest__rsaHandShake()
-        if result == False:
-            return
+        if self.running == True:
+            result = self._DataRequest__rsaHandShake()
+            if result == False:
+                self.disconnect()
         
+        self.syncEvent.set()
         while self.running == True:
             message = self.reaquestQueue.get()
             if message == False:
@@ -81,6 +85,8 @@ class DataRequest(threading.Thread):
                 self.responseQueue.put(False)
             else:
                 self.responseQueue.put(result)
+
+        print("Data client disconnected")
 
     def __executeRequest(self, message):
         jMessage = json.dumps(message)

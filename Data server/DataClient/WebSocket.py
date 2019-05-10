@@ -4,8 +4,8 @@ import tornado.web
 import tornado.websocket
 import time
 import threading
-import MiddleServer
 from tornado import gen
+import DataClient
 
 class MainHandler(tornado.web.RequestHandler):
 	def get(self):
@@ -14,27 +14,54 @@ class MainHandler(tornado.web.RequestHandler):
 class WsHandler(tornado.websocket.WebSocketHandler):
 #	def open(self):
 #		print("ws connected")
-    def rptsend(self, message):
-      threading.Timer(30.0, rptsend).start()
-      temp = datarequest(message, 'temperatura')
-      luce = datarequest(message, 'luce')
-      pressione = datarequest(message, 'pressione')
-      altitudine = datarequest(message, 'altitudine')
+	def rptsend(self, message):
+		threading.Timer(30.0, rptsend).start()
+		temp = datarequest(message, 'temperatura')
+		luce = datarequest(message, 'luce')
+		pressione = datarequest(message, 'pressione')
+		altitudine = datarequest(message, 'altitudine')
+		self.write_message('<dati raccolti>')
 
-      self.write_message(<dati raccolti>)
-
-    def dataRequest(self, sn, dt):
-        timestamp = str(datetime.datetime.now())
-        timestamp = "\'" + timestamp[:-7]  + "\'"
-        dict={"SN": sn ,"DT": dt,"FT": timestamp, "LT": timestamp }
-        MiddleServer.insertRequest(dict)
-        response = MiddleServer.getResponse()
-        return response
+	def dataRequest(self, sn, dt):
+		timestamp = str(datetime.datetime.now())
+		timestamp = "\'" + timestamp[:-7]  + "\'"
+		dict={"SN": sn ,"DT": dt,"FT": timestamp, "LT": timestamp }
+		MiddleServer.insertRequest(dict)
+		response = MiddleServer.getResponse()
+		return response
 
 	def on_message(self, message):
 		rptsend(self, message)
 
+class frontEndHandler(threading.Thread):
+	def __init__(self, tornadoAddress, tornadoPort, dataClientHandler, syncEvent):
+		self.tornadoPort = int(tornadoPort)
+		self.dataClientHandler = dataClientHandler
+		self.tornadoAddress = tornadoAddress
+		self.syncEvent = syncEvent
+		self.running = True
+		threading.Thread.__init__(self, name = "Tornado thread", daemon = False)
 
+	def run(self):
+		webApp = tornado.web.Application([(r"/", MainHandler), (r"/ws", WsHandler),])
+		try:
+			webApp.listen(port = self.tornadoPort, address = self.tornadoAddress)
+		except Exception:
+			print("Fatal error: Unable to create Tornado application")
+			self.stop()
+			self.syncEvent.set()
+		
+		while self.running == True:
+			self.syncEvent.set()
+			tornado.ioloop.IOLoop.current().start()
+
+		print("Tornado server stopped")
+		return
+
+	def stop(self):
+		self.running = False
+		tornado.ioloop.IOLoop.current().stop()
+		return
 
 
 
@@ -78,18 +105,3 @@ class TemperatureWsHandler(tornado.websocket.WebSocketHandler):
 		print("ws disconnected")
 		self.connections.remove(self)
 '''
-
-def make_app():
-	return tornado.web.Application([
-		(r"/", MainHandler),
-		(r"/ws", WsHandler),
-		])
-
-if __name__ == '__main__':
-	app = make_app()
-	app.listen(8888)
-	print("server started at port 8888...")
-	try:
-		tornado.ioloop.IOLoop.current().start()
-	except KeyboardInterrupt:
-		print("\nserver stopped... bye")

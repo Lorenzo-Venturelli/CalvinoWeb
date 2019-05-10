@@ -1,4 +1,6 @@
 {
     "dataServerAddress" : "51.77.151.199",
-    "dataServerPort" : "2000"
+    "dataServerPort" : "2000",
+    "middleServerAddress" : "51.77.151.199",
+    "middleServerPort" : "8888"
 }

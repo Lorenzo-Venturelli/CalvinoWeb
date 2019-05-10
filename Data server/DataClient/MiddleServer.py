@@ -1,7 +1,14 @@
 import threading
 import socket
 import json
+import time
 import DataClient
+import WebSocket
+
+def shutdown(dataClient, tornadoHandler):
+    dataClient.disconnect()
+    tornadoHandler.stop()
+    return
 
 if __name__ == "__main__":
     try:
@@ -27,5 +34,32 @@ if __name__ == "__main__":
     except KeyError:
         print("Fatal Error: Data Server Port not found. Unable to start")
         quit()
+    try:
+        middleServerAddress = settings["middleServerAddress"]
+    except KeyError:
+        print("Fatal Error: Middle Server Address not found. Unable to start")
+        quit()
+    try:
+        middleServerPort = settings["middleServerPort"]
+    except KeyError:
+        print("Fatal Error: Middle Server Port not found. Unable to start")
+        quit()
     
-    dataClient = DataClient.DataRequest(serverAddress = dataServerAddress, serverPort = dataServerPort)
+    tornadoSyncEvent = threading.Event()
+    dataClientSyncEvent = threading.Event()
+    dataClient = DataClient.DataRequest(serverAddress = dataServerAddress, serverPort = dataServerPort, syncEvent = dataClientSyncEvent)
+    dataClient.start()
+    dataClientSyncEvent.wait()
+    dataClientSyncEvent.clear()
+    if dataClient.running == True:
+        tornadoHandler = WebSocket.frontEndHandler(tornadoAddress = middleServerAddress, tornadoPort = middleServerPort, dataClientHandler = dataClient, syncEvent = tornadoSyncEvent)
+        tornadoHandler.start()
+        tornadoSyncEvent.wait()
+        tornadoSyncEvent.clear()
+        if tornadoHandler.running == True:
+            try:
+                time.sleep(60)
+            except KeyboardInterrupt:
+                shutdown(dataClient = dataClient, tornadoHandler = tornadoHandler)
+                print("Server stopped because of user")
+                quit()
