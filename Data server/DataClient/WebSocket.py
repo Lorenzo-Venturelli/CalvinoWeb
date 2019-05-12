@@ -1,4 +1,4 @@
-#finire invio dati alla pagina web e sistemare il if name == main
+#finire invio dati alla pagina web
 import tornado.ioloop
 import tornado.web
 import tornado.websocket
@@ -15,12 +15,15 @@ class WsHandler(tornado.websocket.WebSocketHandler):
 #	def open(self):
 #		print("ws connected")
 	def rptsend(self, message):
-		threading.Timer(30.0, rptsend).start()
-		temp = datarequest(message, 'temperatura')
-		luce = datarequest(message, 'luce')
-		pressione = datarequest(message, 'pressione')
-		altitudine = datarequest(message, 'altitudine')
-		self.write_message('<dati raccolti>')
+		t = threading.Timer(5.0, rptsend)
+		t.daemon = True
+		t.start()
+		temp = dataRequest(message, 'temperatura')
+		luce = dataRequest(message, 'luce')
+		pressione = dataRequest(message, 'pressione')
+		altitudine = dataRequest(message, 'altitudine')
+
+		self.write_message(f '{temp},{luce},{pressione},{altitudine}') # decidere come scrivere il messaggio nel miglior modo per far si che sia facilmente interpretabile da JS
 
 	def dataRequest(self, sn, dt):
 		timestamp = str(datetime.datetime.now())
@@ -31,7 +34,26 @@ class WsHandler(tornado.websocket.WebSocketHandler):
 		return response
 
 	def on_message(self, message):
-		rptsend(self, message)
+		rptsend(self, message) #il messaggio ricevuto è numero del SN da monitorare
+		'''
+		from apscheduler.scheduler import Scheduler
+
+		sched = Scheduler()
+		sched.start()
+
+		def some_job():
+		    print "Every 10 seconds"
+
+		sched.add_interval_job(some_job, seconds = 10)
+		#sched.add_job(some_job, 'interval', seconds = 10)
+
+		....
+		sched.shutdown()
+		'''
+
+#    self.write_message(message)
+#	def on_close(self):
+#		print("ws disconnected")
 
 class frontEndHandler(threading.Thread):
 	def __init__(self, tornadoAddress, tornadoPort, dataClientHandler, syncEvent):
@@ -50,7 +72,7 @@ class frontEndHandler(threading.Thread):
 			print("Fatal error: Unable to create Tornado application")
 			self.stop()
 			self.syncEvent.set()
-		
+
 		while self.running == True:
 			self.syncEvent.set()
 			tornado.ioloop.IOLoop.current().start()
@@ -62,46 +84,3 @@ class frontEndHandler(threading.Thread):
 		self.running = False
 		tornado.ioloop.IOLoop.current().stop()
 		return
-
-
-
-#    self.write_message(message)
-#	def on_close(self):
-#		print("ws disconnected")
-'''
-class ClockHandler(tornado.web.RequestHandler):
-	def get(self):
-		self.render("clock.html")
-
-class ClockWsHandler(tornado.websocket.WebSocketHandler):
-	def open(self):
-		print("ws connected")
-
-	async def on_message(self, message):
-		await gen.sleep(1)
-		self.write_message(u"{}".format(time.strftime('%X')))
-
-	def on_close(self):
-		print("ws disconnected")
-
-class TemperatureHandler(tornado.web.RequestHandler):
-	def get(self):
-		self.render("temp.html")
-
-class TemperatureWsHandler(tornado.websocket.WebSocketHandler):
-	connections = set()
-
-	def open(self):
-		print("ws connected")
-		self.connections.add(self)
-
-	def on_message(self, message):
-		print("msg received")
-		for connection in self.connections:
-			if connection is not self:
-				connection.write_message(message)
-
-	def on_close(self):
-		print("ws disconnected")
-		self.connections.remove(self)
-'''
