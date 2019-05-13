@@ -12,8 +12,7 @@
 		<link rel="stylesheet" href="assets/css/main.css" />
 		<noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
 	</head>
-	<body class="is-preload">
-
+	<body class="is-preload" onload="setDefault()">
 		<!-- Wrapper -->
 			<div id="wrapper">
 
@@ -30,7 +29,6 @@
 							<li><a href="#intro" class="active">Come funziona</a></li>
 							<li><a href="#first">Tempo reale</a></li>
 							<li><a href="#second">Dati storici</a></li>
-							<!----<li><a href="#cta">Get Started</a></li>-->
 						</ul>
 					</nav>
 
@@ -45,10 +43,10 @@
 											<h2>Come funziona</h2>
 										</header>
 										<p>Nella sezione "Tempo reale" troverai i dati aggiornati minuto per minuto rilevati
-											dalle centraline del programma Calvino.</br>
+											dalle centraline del programma Calvino.<br>
 											Nella sezione "Dati storici" troverai invece tutte le informazioni statistiche basate
 											sui dati storici rilevati dalle centraline del programma Calvino.
-											</br>
+											<br>
 										</p>
 									</div>
 									<span class="image"><img src="images/logoComune.png" alt="" /></span>
@@ -67,7 +65,7 @@
 												<span class="rtmenu">
 													<li class="rtmenu">
 														<select id="RTSN" class="rtmenu">
-														<option value="1", selected = "selected">1</option>
+														<option value="1" selected = "selected">1</option>
 														<option value="2">2</option>
 														<option value="3">3</option>
 														<option value="4">4</option>
@@ -81,7 +79,7 @@
 													</li>
 												</span>
 												<span>
-													<a class="button">Vai</a>
+													<a class="button" onclick="RTsetSensor();">Vai</a>
 												</span>
 											</ul>
 										</div>
@@ -116,8 +114,8 @@
 									<div class="graphNav">
 										<div class="option">
 											<h1>Sensore</h1>
-											<select name="GSN">
-												<option value="1", selected = "selected">1</option>
+											<select id="GSN">
+												<option value="1" selected = "selected">1</option>
 												<option value="2">2</option>
 												<option value="3">3</option>
 												<option value="4">4</option>
@@ -131,8 +129,8 @@
 										</div>			
 										<div class="option">
 											<h1>Tipo di dato</h1>
-											<select name="GDT">
-												<option value="Temperatura", selected = "selected">Temperatura</option>
+											<select id="GDT">
+												<option value="Temperatura" selected = "selected">Temperatura</option>
 												<option value="Luce">Luce</option>
 												<option value="Pressione">Pressione</option>
 												<option value="Altitudine">Altitudine</option>
@@ -140,19 +138,19 @@
 										</div>			
 										<div class="option">
 											<h1>Inizio</h1>
-											<input type="date" name="GFTD">
-											<input type="time" name="GFTT">
+											<input type="date" id="GFTD">
+											<input type="time" id="GFTT">
 										</div>			
 										<div class="option">
 											<h1>Fine</h1>
-											<input type="date" name="GLTD">
-											<input type="time" name="GLTT">
+											<input type="date" id="GLTD">
+											<input type="time" id="GLTT">
 										</div>									
 									</div>
 									<div class="graphCont">
 										<canvas id="graph" class="graph"></canvas>
 									</div>
-									<a class="button">Vai</a>
+									<a class="button" onclick="GDrequest();">Vai</a>
 								</div>
 							</section>
 
@@ -191,8 +189,6 @@
 			<script src="assets/js/util.js"></script>
 			<script src="assets/js/main.js"></script>
 			<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.min.js"></script>
+			<script src="assets/js/user.js"></script>
 	</body>
-	<script>
-		
-	</script>
 </html>
