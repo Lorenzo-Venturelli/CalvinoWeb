@@ -1,5 +1,5 @@
-#! /usr/bin/python
 import threading
+import logging
 import socket
 import time
 import json
@@ -15,7 +15,7 @@ startingTime = startingTime.astimezone()
 socketBinded = True
 
 class DataServerAccepter(threading.Thread):
-    def __init__(self, address, port, dataProxy, dataProxyLock, dataProxySyncEvent):
+    def __init__(self, address, port, dataProxy, dataProxyLock, dataProxySyncEvent, logger):
         self.serverAddress = address
         self.serverPort = port
         self.dataProxy = dataProxy
@@ -25,6 +25,7 @@ class DataServerAccepter(threading.Thread):
         self.serverSocket.bind((str(self.serverAddress), int(self.serverPort)))
         self.__running = True
         self.connectedClient = dict()
+        self.logger = logger
         threading.Thread.__init__(self, name = "Data Server Accepter Thread", daemon = False)
 
     def run(self):
@@ -33,18 +34,18 @@ class DataServerAccepter(threading.Thread):
             try:
                 clientSocket, clientAddress = self.serverSocket.accept()
             except socket.error():
-                print("Error: Unknown error occurred while a client tried to connect. Connection aborted")
+                self.logger.error("Unknown error occurred while a client tried to connect. Connection aborted")
                 clientAddress = None
             
             if clientAddress != None:
                 try:
-                    clientThread = DataClient(address = clientAddress, clientSocket = clientSocket, dataProxy = self.dataProxy, dataProxyLock = self.dataProxyLock, dataProxySyncEvent = self.dataProxySyncEvent)
+                    clientThread = DataClient(address = clientAddress, clientSocket = clientSocket, dataProxy = self.dataProxy, dataProxyLock = self.dataProxyLock, dataProxySyncEvent = self.dataProxySyncEvent, logger = self.logger)
                     clientThread.start()
                     self.connectedClient[str(clientAddress[0])] = clientThread
-                    print("Client " + str(clientAddress[0]) + " connected")
+                    self.logger.info("Client " + str(clientAddress[0]) + " connected")
                 except Exception as reason:
-                    print("Error: Unhandled error occured while creating client thread for client " + str(clientAddress[0]))
-                    print("Reason: " + str(reason))
+                    self.logger.error("Unhandled error occured while creating client thread for client " + str(clientAddress[0]))
+                    self.logger.info("Reason: " + str(reason))
                     clientSocket.close()
                     clientSocket = None
                     clientAddress = None
@@ -79,7 +80,7 @@ class DataServerAccepter(threading.Thread):
         return
          
 class DataClient(threading.Thread):
-    def __init__(self, address, clientSocket, dataProxy, dataProxyLock, dataProxySyncEvent):
+    def __init__(self, address, clientSocket, dataProxy, dataProxyLock, dataProxySyncEvent, logger):
         self.address = address
         self.clientSocket = clientSocket
         self.dataProxy = dataProxy
@@ -89,6 +90,7 @@ class DataClient(threading.Thread):
         self.myPubKey = None
         self.myPrivKey = None
         self.hisPubKey = None
+        self.logger = logger
         threading.Thread.__init__(self, name = "Data Client " + str(address[0]), daemon = True)
 
     def disconnect(self):
@@ -117,7 +119,7 @@ class DataClient(threading.Thread):
                         return True
                     else:
                         self.clientSocket.sendall(str("599").encode())
-        print("Security error: Error occurred while negotiating RSA keys with " + str(self.address[0]) + " connection terminated for security reasons")
+        self.logger.waring("Error occurred while negotiating RSA keys with " + str(self.address[0]) + " connection terminated for security reasons")
         return False
     
     def __decryptMessage(self, AESsecret, RSAsecret, byteObject = False):
@@ -259,18 +261,20 @@ if __name__ == "__main__":
     dataProxySyncEvent = threading.Event()
     dataProxyLock = threading.Lock()
     lastData = None
+    logger = logging.getLogger(name = "DataServer")
+    logger.basicConfig(filename = '../Files/logs/DataServer.log',level = logging.INFO)
 
     try:
         with open(file = "../Files/settings.json", mode = 'r') as settingsFile:
             settings = json.load(fp = settingsFile)
     except FileNotFoundError:
-        print("Error: Settings file not found")
+        logging.error("Settings file not found")
         settings = dict()
     except json.JSONDecodeError:
-        print("Error: Settings file has an invalid format")
+        logging.error("Settings file has an invalid format")
         settings = dict()
     except Exception:
-        print("Error: An unknown error occurred while reading the settings file")
+        logging.error("An unknown error occurred while reading the settings file")
         settings = dict()
 
     if "brkAdr" in settings.keys():
@@ -318,41 +322,37 @@ if __name__ == "__main__":
     try:
         sqlHandler = SQL.CalvinoDB(databaseAddress = sqlAdr, databaseName = sqlName, user = sqlUsername, password = sqlPassword)
     except Exception as reason:
-        print("Fatal error: SQL initialization error")
-        print("Reason: " + str(reason))
+        logging.critical("SQL initialization error. Reason = " + str(reason))
         quit()
 
     try:
         dataProxyHandler = DataProxy.dataProxy(SQLProxy = sqlHandler, syncEvents = dataProxySyncEvent, lock = dataProxyLock, proxy = lastData)
     except Exception as reason:
-        print("Fatal error: Data Proxy initialization error")
-        print("Reason: " + str(reason))
+        logging.critical("Data Proxy initialization error. Reason = " + str(reason))
         quit()
     
     try:
         mqttHandler = MQTT.MQTTclient(brokerAddress = brkAdr, username = brkUsername, password = brkPassword, syncEvents = mqttSyncEvent, dataProxy = dataProxyHandler)
     except Exception as reason:
-        print("Fatal error: MQTT initialization error")
-        print("Reason: " + str(reason))
+        loggig.critical("MQTT initialization error. Reason = " + str(reason))
         quit()
 
     try:
-        dataServerListener = DataServerAccepter(address = '', port = 2000, dataProxy = dataProxyHandler, dataProxyLock = dataProxyLock, dataProxySyncEvent = dataProxySyncEvent)
+        dataServerListener = DataServerAccepter(address = '', port = 2000, dataProxy = dataProxyHandler, dataProxyLock = dataProxyLock, dataProxySyncEvent = dataProxySyncEvent, logger = logger)
     except Exception as reason:
-        print("Fatal error: Data Server can not be started")
-        print("Reason: " +  str(reason))
+        loggign.critical("Data Server can not be started. Reason = " + str(reason))
         quit()
 
     mqttHandler.start()
 
     mqttSyncEvent[0].wait(timeout = None)
     if mqttSyncEvent[1].is_set() == True:
-        print("Fatal error: MQTT connection initialization error")
-        print("Server stopped because fatal MQTT connection error")
+        logging.critical("MQTT connection initialization error")
+        logging.info("Server stopped because fatal MQTT connection error")
         dataServerListener.stop()
         quit()
     else:
-        print("MQTT connection initialized")
+        logging.info("MQTT connection initialized")
         mqttSyncEvent[0].clear()
         mqttSyncEvent[1].clear()
         dataServerListener.start()
@@ -363,7 +363,7 @@ if __name__ == "__main__":
                 optimizeSQL(dataProxy = dataProxyHandler, reason = False)
         except KeyboardInterrupt:
             shutdown(mqttHandler = mqttHandler, dataProxyHandler = dataProxyHandler, dataServerListener = dataServerListener, startingTime = startingTime)
-            print("Server stopped because of user")
+            logging.info("Server stopped because of user")
             quit()
 
         
