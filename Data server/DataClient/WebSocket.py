@@ -4,6 +4,7 @@ import tornado.web
 import tornado.websocket
 import time
 import threading
+import datetime
 from apscheduler.schedulers.tornado import TornadoScheduler
 from tornado import gen
 import DataClient
@@ -15,16 +16,18 @@ class MainHandler(tornado.web.RequestHandler):
 class WsHandler(tornado.websocket.WebSocketHandler):
 #	def open(self):
 #		print("ws connected")
-	self.pastMsg = False
-	self.scheduler = TornadoScheduler()
-	self.sched.start()
-	#self.scheduler.shutdown(wait=False)
+	def __init__(self):
+		self.pastMsg = False
+		self.scheduler = TornadoScheduler()
+		self.sched.start()
+		#self.scheduler.shutdown(wait=False)
+		tornado.websocket.WebSocketHandler.__init__(self)
 
 	def send(self, message):
-		temp = dataRequest(message, 'temperatura')
-		luce = dataRequest(message, 'luce')
-		pressione = dataRequest(message, 'pressione')
-		altitudine = dataRequest(message, 'altitudine')
+		temp = self.dataRequest(message, 'temperatura')
+		luce = self.dataRequest(message, 'luce')
+		pressione = self.dataRequest(message, 'pressione')
+		altitudine = self.dataRequest(message, 'altitudine')
 		#formatta in json
 		#self.write_message(<manda json>)
 
@@ -41,8 +44,7 @@ class WsHandler(tornado.websocket.WebSocketHandler):
 			if self.pastMsg != False:
 				self.scheduler.remove_job('send')
 			self.pastMsg = str(message)
-			self.scheduler.add_job(send, 'interval', seconds = 10 , id='send')
-			send(self, message) #il messaggio ricevuto è numero del SN da monitorare
+			self.scheduler.add_job(self.send, 'interval', seconds = 10 , id='send')
 		else:
 			print("No sensor number change")
 			return
