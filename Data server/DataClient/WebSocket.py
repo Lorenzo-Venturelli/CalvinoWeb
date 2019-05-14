@@ -26,14 +26,14 @@ class WsHandler(tornado.websocket.WebSocketHandler):
 		pressione = dataRequest(message, 'pressione')
 		altitudine = dataRequest(message, 'altitudine')
 		#formatta in json
-		self.write_message(<manda json>)
+		#self.write_message(<manda json>)
 
 	def dataRequest(self, sn, dt):
 		timestamp = str(datetime.datetime.now())
 		timestamp = "\'" + timestamp[:-7]  + "\'"
 		dict={"SN": sn ,"DT": dt,"FT": timestamp, "LT": timestamp }
-		MiddleServer.insertRequest(dict)
-		response = MiddleServer.getResponse()
+		self.dataClientHandler.insertRequest(dict)
+		response = self.dataClientHandler.getResponse()
 		return response
 
 	def on_message(self, message):

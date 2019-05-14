@@ -44,7 +44,7 @@ if __name__ == "__main__":
     except KeyError:
         print("Fatal Error: Middle Server Port not found. Unable to start")
         quit()
-    
+
     tornadoSyncEvent = threading.Event()
     dataClientSyncEvent = threading.Event()
     dataClient = DataClient.DataRequest(serverAddress = dataServerAddress, serverPort = dataServerPort, syncEvent = dataClientSyncEvent)
@@ -58,7 +58,8 @@ if __name__ == "__main__":
         tornadoSyncEvent.clear()
         if tornadoHandler.running == True:
             try:
-                time.sleep(60)
+                while True:
+                    time.sleep(60)
             except KeyboardInterrupt:
                 shutdown(dataClient = dataClient, tornadoHandler = tornadoHandler)
                 print("Server stopped because of user")
