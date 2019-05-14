@@ -3,6 +3,7 @@ import socket
 import time
 import json
 import re
+import logging
 import SQL
 
 # This class provide a proxy interface between SQL handler class and others classes.
@@ -10,12 +11,14 @@ import SQL
 # avoid formal errors.
 # For detailed informations about each method see documentation.
 class dataProxy():
-    def __init__(self, SQLProxy, syncEvents, lock, proxy):
+    def __init__(self, SQLProxy, syncEvents, lock, proxy, loggingFile):
         self.SQLProxy = SQLProxy
         self.lastData = dict()
         self.syncEvents = syncEvents
         self.proxyLock = lock
         self.proxy = proxy
+        self.__logger = logging.getLogger(name = "DataProxy")
+        self.__logger.basicConfig(filename = loggingFile, level = logging.INFO)
 
         for i in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
             self.lastData[i] = dict()
@@ -74,17 +77,17 @@ class dataProxy():
                     result = self.SQLProxy.summarize(sensorNumber = sensorNumber, dataType = dataType, firstTime = firstTime, lastTime = lastTime, skipCheck = True)
                     if result[0] == False:
                         if result[1] == 1:
-                            print("SQL Error: Impossible to summarize values if firstTime is bigger than lastTime")
+                            self.__logger.warning("Impossible to summarize values if firstTime is bigger than lastTime")
                         elif result[1] == 2:
-                            print("SQL Error: No data to summarize for sensor " + str(sensorNumber) + " of type " + str(dataType) + " between " + str(firstTime) + " and " + str(lastTime))
+                            self.__logger.warning("No data to summarize for sensor " + str(sensorNumber) + " of type " + str(dataType) + " between " + str(firstTime) + " and " + str(lastTime))
                         elif result[1] == 3:
-                            print("SQL Error: Unexpected query error while requesting data to summarize")
+                            self.__logger.warning("Unexpected query error while requesting data to summarize")
                         elif result[1] == 4:
-                            print("SQL Error: Unexpected query error while removing summarized data")
+                            self.__logger.warning("Unexpected query error while removing summarized data")
                         elif result[1] == 5:
-                            print("SQL Error: Unexpected query error while inserting new summarized data")
+                            self.__logger.warning("Unexpected query error while inserting new summarized data")
             self.SQLProxy.notifySummarization(state = False)
-        print("Data optimized for interval " + str(firstTime) + " " + str(lastTime))
+        self.__logger.info("Data optimized for interval " + str(firstTime) + " " + str(lastTime))
         return True
 
 

@@ -3,20 +3,23 @@ import SQL_lib
 import queue
 from random import randint
 import datetime
+import logging
 
 # This class provide method to execute SQL DB operations.
 # This class provide building query method and parsing method.
 # This class must be used through DataProxy interface to avodi errors.
 # For detailed informations about each method see documentation.
 class CalvinoDB():
-    def __init__(self, databaseAddress, databaseName, user, password):
+    def __init__(self, databaseAddress, databaseName, user, password, loggingFile):
         self.__dbAddress = databaseAddress
         self.__dbName = databaseName
         self.__dbUser = user
         self.__dbPass = password
         self.__queryQueue = queue.Queue()
         self.__pauseInsert = False
-        self.db = SQL_lib.MsSQL(server = self.__dbAddress, database = self.__dbName, username = self.__dbUser, password = self.__dbPass)
+        self.__logger = logging.getLogger(name = "SQL")
+        self.__logger.basicConfig(filename = loggingFile, level = logging.INFO)
+        self.db = SQL_lib.MsSQL(server = self.__dbAddress, database = self.__dbName, username = self.__dbUser, password = self.__dbPass, logger = self.__logger)
 
     def __randomN(self, digits):
         range_start = 10 **(digits - 1)
@@ -117,7 +120,7 @@ class CalvinoDB():
             query = self.__queryQueue.get()
             queryResult = self.db.query(query)
             if queryResult == False:
-                print("SQL Error: Unknown SQL error while inserting queued data")
+                self.__logger.warning("Unknown SQL error while inserting queued data")
         
     def __parseQueryResult(self, queryResult):
         parsed = dict()
@@ -132,7 +135,7 @@ class CalvinoDB():
                 for element in tmp[entry]:
                     parsed[entry].append(str(element))
         except Exception as reason:
-            print("Error: parsing error occured")
-            print("Reason: " + str(reason))
+            self.__logger.warning("parsing error occured")
+            self.__logger.info("Reason: " + str(reason))
             return False
         return parsed
