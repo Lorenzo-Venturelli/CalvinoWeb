@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import threading
 import socket
 import time
@@ -18,7 +19,7 @@ class dataProxy():
         self.proxyLock = lock
         self.proxy = proxy
         self.__logger = logging.getLogger(name = "DataProxy")
-        self.__logger.basicConfig(filename = loggingFile, level = logging.INFO)
+        logging.basicConfig(filename = loggingFile, level = logging.INFO)
 
         for i in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
             self.lastData[i] = dict()

@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import threading
 import logging
 import socket
@@ -263,7 +264,7 @@ if __name__ == "__main__":
     lastData = None
     loggingFile = '../Files/logs/DataServer.log'
     logger = logging.getLogger(name = "DataServer")
-    logger.basicConfig(filename = loggingFile, level = logging.INFO)
+    logging.basicConfig(filename = loggingFile, level = logging.INFO)
 
     try:
         with open(file = "../Files/settings.json", mode = 'r') as settingsFile:

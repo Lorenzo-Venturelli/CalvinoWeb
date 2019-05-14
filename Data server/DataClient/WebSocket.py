@@ -7,7 +7,6 @@ import time
 import threading
 import datetime
 import json
-
 from apscheduler.schedulers.tornado import TornadoScheduler
 
 import DataClient
@@ -17,8 +16,8 @@ class MainHandler(tornado.web.RequestHandler):
 		self.render("../Website/index.html")
 
 class WsHandler(tornado.websocket.WebSocketHandler):
-
 	def open(self):
+		print("Cioccolata")
 		self.pastMsg = False
 		self.scheduler = TornadoScheduler()
 		self.sched.start()

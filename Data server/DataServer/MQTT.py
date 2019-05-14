@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#!/usr/bin/python3
 import paho.mqtt.client as mqtt
 import DataProxy
 import threading
@@ -25,7 +25,7 @@ class MQTTclient(threading.Thread):
         self.dataProxy = dataProxy
         self.dataProxyLock = threading.Lock()
         self.__logger = logging.getLogger(name = "MQTT")
-        self.__logger.basicConfig(filename = loggingFile, level = logging.INFO)
+        logging.basicConfig(filename = loggingFile, level = logging.INFO)
         threading.Thread.__init__(self, name = "MQTT Thread", daemon = True)
 
     def run(self):

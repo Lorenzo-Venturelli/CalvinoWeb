@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#!/usr/bin/python3
 import SQL_lib
 import queue
 from random import randint
@@ -18,7 +18,7 @@ class CalvinoDB():
         self.__queryQueue = queue.Queue()
         self.__pauseInsert = False
         self.__logger = logging.getLogger(name = "SQL")
-        self.__logger.basicConfig(filename = loggingFile, level = logging.INFO)
+        logging.basicConfig(filename = loggingFile, level = logging.INFO)
         self.db = SQL_lib.MsSQL(server = self.__dbAddress, database = self.__dbName, username = self.__dbUser, password = self.__dbPass, logger = self.__logger)
 
     def __randomN(self, digits):
