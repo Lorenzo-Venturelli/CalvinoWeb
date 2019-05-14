@@ -119,7 +119,7 @@ class DataClient(threading.Thread):
                         return True
                     else:
                         self.clientSocket.sendall(str("599").encode())
-        self.logger.waring("Error occurred while negotiating RSA keys with " + str(self.address[0]) + " connection terminated for security reasons")
+        self.logger.warning("Error occurred while negotiating RSA keys with " + str(self.address[0]) + " connection terminated for security reasons")
         return False
     
     def __decryptMessage(self, AESsecret, RSAsecret, byteObject = False):
@@ -162,14 +162,14 @@ class DataClient(threading.Thread):
                     self.disconnect()
                     continue
                 except Exception:
-                    print("Error: Unknown comunication error occurred with client " + str(self.address[0]))
+                    self.logger.error("Error: Unknown comunication error occurred with client " + str(self.address[0]))
                     continue
 
                 request = self._DataClient__decryptMessage(AESsecret = AESsecret, RSAsecret = RSAsecret)
                 try:
                     request = json.loads(request)
                 except json.JSONDecodeError:
-                    print("Error: Received corrupted request from host " + str(self.address[0]))
+                    self.logger.warning("Error: Received corrupted request from host " + str(self.address[0]))
                     continue
 
                 if "SN" in request.keys() and "DT" in request.keys() and "FT" in request.keys() and "LT" in request.keys():
@@ -221,10 +221,10 @@ class DataClient(threading.Thread):
                     self.disconnect()
                     continue
                 except Exception:
-                    print("Error: Unknown comunication error occurred with client " + str(self.address[0]))
+                    self.logger.warning("Error: Unknown comunication error occurred with client " + str(self.address[0]))
                     continue
         
-        print("Client " + str(self.address[0]) + " disconnected")
+        self.logger.info("Client " + str(self.address[0]) + " disconnected")
         return
 
 def optimizeSQL(dataProxy, reason, firstTime = None):
@@ -261,8 +261,9 @@ if __name__ == "__main__":
     dataProxySyncEvent = threading.Event()
     dataProxyLock = threading.Lock()
     lastData = None
+    loggingFile = '../Files/logs/DataServer.log'
     logger = logging.getLogger(name = "DataServer")
-    logger.basicConfig(filename = '../Files/logs/DataServer.log',level = logging.INFO)
+    logger.basicConfig(filename = loggingFile, level = logging.INFO)
 
     try:
         with open(file = "../Files/settings.json", mode = 'r') as settingsFile:
@@ -320,19 +321,19 @@ if __name__ == "__main__":
         sqlName = input(prompt = "> ")
 
     try:
-        sqlHandler = SQL.CalvinoDB(databaseAddress = sqlAdr, databaseName = sqlName, user = sqlUsername, password = sqlPassword)
+        sqlHandler = SQL.CalvinoDB(databaseAddress = sqlAdr, databaseName = sqlName, user = sqlUsername, password = sqlPassword, loggingFile = loggingFile)
     except Exception as reason:
         logging.critical("SQL initialization error. Reason = " + str(reason))
         quit()
 
     try:
-        dataProxyHandler = DataProxy.dataProxy(SQLProxy = sqlHandler, syncEvents = dataProxySyncEvent, lock = dataProxyLock, proxy = lastData)
+        dataProxyHandler = DataProxy.dataProxy(SQLProxy = sqlHandler, syncEvents = dataProxySyncEvent, lock = dataProxyLock, proxy = lastData, loggingFile = loggingFile)
     except Exception as reason:
         logging.critical("Data Proxy initialization error. Reason = " + str(reason))
         quit()
     
     try:
-        mqttHandler = MQTT.MQTTclient(brokerAddress = brkAdr, username = brkUsername, password = brkPassword, syncEvents = mqttSyncEvent, dataProxy = dataProxyHandler)
+        mqttHandler = MQTT.MQTTclient(brokerAddress = brkAdr, username = brkUsername, password = brkPassword, syncEvents = mqttSyncEvent, dataProxy = dataProxyHandler, loggingFile = loggingFile)
     except Exception as reason:
         loggig.critical("MQTT initialization error. Reason = " + str(reason))
         quit()

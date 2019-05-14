@@ -2,6 +2,7 @@
 import paho.mqtt.client as mqtt
 import DataProxy
 import threading
+import logging
 import time
 import re
 
@@ -10,7 +11,7 @@ import re
 # using __messageCallback that is, as the name suggest, asynchronusly called.
 # For detailed information about each method see documentation.
 class MQTTclient(threading.Thread):
-    def __init__(self, brokerAddress, username, password, syncEvents, dataProxy):
+    def __init__(self, brokerAddress, username, password, syncEvents, dataProxy, loggingFile):
         self.brokerAddress = brokerAddress
         self.username = username
         self.password = password
@@ -23,6 +24,8 @@ class MQTTclient(threading.Thread):
         self.subscribeResult = None
         self.dataProxy = dataProxy
         self.dataProxyLock = threading.Lock()
+        self.__logger = logging.getLogger(name = "MQTT")
+        self.__logger.basicConfig(filename = loggingFile, level = logging.INFO)
         threading.Thread.__init__(self, name = "MQTT Thread", daemon = True)
 
     def run(self):
@@ -31,7 +34,7 @@ class MQTTclient(threading.Thread):
         try:
             self.subscribeResult = self.client.subscribe("/#")
         except Exception:
-            print("Error: Errors occurr while subscribing to channel")
+            self.__logger.critical("Errors occurr while subscribing to channel")
             self.syncEvents[1].set()
             return
             
@@ -48,10 +51,10 @@ class MQTTclient(threading.Thread):
             self.client.loop_stop(force = True)
             self.client.disconnect()
         except Exception as reason:
-            print("MQTT Error: Error occured while stopping MQTT sub-Thread")
-            print("Reason: " + str(reason))
+            self.__logger.error("Error occured while stopping MQTT sub-Thread")
+            self.__logger.info("Reason: " + str(reason))
 
-        print("MQTT connection terminated")
+        self.__logger.info("MQTT connection terminated")
 
         return
 
@@ -63,11 +66,11 @@ class MQTTclient(threading.Thread):
         try:
             match = re.match(pattern = r"\/[a-z]*\-([0-9][0-9])\/([a-z]*)", string = str(message.topic))
         except Exception as reason:
-            print("Error: Regex error occurred")
-            print("Reason : " + str(reason))
+            self.__logger.warning("Regex error occurred")
+            self.__logger.info("Reason : " + str(reason))
 
         if match == None:
-            print("Error: Regex could not match message contenent")
+            self.__logger.warning("Regex could not match message contenent")
         else:
             sensorNumber = str(match.group(1))
             dataType = str(match.group(2))
@@ -77,13 +80,13 @@ class MQTTclient(threading.Thread):
                 return
             else:
                 if result[1] == 1:
-                    print("Error: Received data for sensor " + str(sensorNumber) + " that do not exist.")
+                    self.__logger.warning("Received data for sensor " + str(sensorNumber) + " that do not exist.")
                 elif result[1] == 2:
-                    print("Error: Received data of type " + str(dataType) + " for sensor " + str(sensorNumber) + ". This sensor has not this data type")
+                    self.__logger.warning("Received data of type " + str(dataType) + " for sensor " + str(sensorNumber) + ". This sensor has not this data type")
                 elif result[1] == 3:
-                    print("Error: Unknown SQL error occured")
+                    self.__logger.warning("Unknown SQL error occured")
 
-                print("This data are lost forever")
+                self.__logger.warning("This data are lost forever")
                 return
         
 
