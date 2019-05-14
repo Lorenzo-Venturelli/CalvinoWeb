@@ -1,12 +1,15 @@
-#finire invio dati alla pagina web
 import tornado.ioloop
 import tornado.web
 import tornado.websocket
+from tornado import gen
+
 import time
 import threading
 import datetime
+import json
+
 from apscheduler.schedulers.tornado import TornadoScheduler
-from tornado import gen
+
 import DataClient
 
 class MainHandler(tornado.web.RequestHandler):
@@ -16,21 +19,20 @@ class MainHandler(tornado.web.RequestHandler):
 class WsHandler(tornado.websocket.WebSocketHandler):
 
 	def open(self):
-		print("Fragola")
 		self.pastMsg = False
 		self.scheduler = TornadoScheduler()
 		self.sched.start()
 		print("Connected")
 		#self.scheduler.shutdown(wait=False)
-		
 
 	def send(self, message):
 		temp = self.dataRequest(message, 'temperatura')
 		luce = self.dataRequest(message, 'luce')
 		pressione = self.dataRequest(message, 'pressione')
 		altitudine = self.dataRequest(message, 'altitudine')
-		#formatta in json
-		#self.write_message(<manda json>)
+		message = {"temperatura" : temp, "luce" : luce, "pressione" : pressione, "altitudine" : altitudine}
+		jMessage = json.dumps(message)
+		self.write_message(jMessage)
 
 	def dataRequest(self, sn, dt):
 		timestamp = str(datetime.datetime.now())
@@ -44,12 +46,11 @@ class WsHandler(tornado.websocket.WebSocketHandler):
 		if message != self.pastMsg:
 			if self.pastMsg != False:
 				self.scheduler.remove_job('send')
-			self.pastMsg = str(message)
-			self.scheduler.add_job(self.send, 'interval', seconds = 10 , id='send')
+			self.pastMsg = message
+			self.scheduler.add_job(self.send, trigger = 'interval', args = message, seconds = 15 , id='send')
 		else:
 			print("No sensor number change")
 			return
-
 #    self.write_message(message)
 #	def on_close(self):
 #		print("ws disconnected")
@@ -67,7 +68,7 @@ class frontEndHandler(threading.Thread):
 		try:
 			ioLoop = tornado.ioloop.IOLoop()
 			ioLoop.make_current()
-			webApp = tornado.web.Application([(r"/", MainHandler), (r"/ws", WsHandler), 
+			webApp = tornado.web.Application([(r"/", MainHandler), (r"/ws", WsHandler),
 			(r"/assets/(.*)", tornado.web.StaticFileHandler, {"path":"../Website/assets"}),
 			(r"/images/(.*)", tornado.web.StaticFileHandler, {"path":"../Website/images"})])
 			webApp.listen(port = self.tornadoPort, address = self.tornadoAddress)
@@ -93,5 +94,5 @@ class frontEndHandler(threading.Thread):
 			tornado.ioloop.IOLoop.current().stop()
 		except Exception as reason:
 			print("Tornado Loop stop error because " + str(reason))
-			
+
 		return
