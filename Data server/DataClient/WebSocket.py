@@ -14,14 +14,15 @@ class MainHandler(tornado.web.RequestHandler):
 		self.render("../Website/index.html")
 
 class WsHandler(tornado.websocket.WebSocketHandler):
-#	def open(self):
-#		print("ws connected")
-	def __init__(self):
+
+	def open(self):
+		print("Fragola")
 		self.pastMsg = False
 		self.scheduler = TornadoScheduler()
 		self.sched.start()
+		print("Connected")
 		#self.scheduler.shutdown(wait=False)
-		tornado.websocket.WebSocketHandler.__init__(self)
+		
 
 	def send(self, message):
 		temp = self.dataRequest(message, 'temperatura')
@@ -63,22 +64,34 @@ class frontEndHandler(threading.Thread):
 		threading.Thread.__init__(self, name = "Tornado thread", daemon = False)
 
 	def run(self):
-		webApp = tornado.web.Application([(r"/", MainHandler), (r"/ws", WsHandler),])
 		try:
+			ioLoop = tornado.ioloop.IOLoop()
+			ioLoop.make_current()
+			webApp = tornado.web.Application([(r"/", MainHandler), (r"/ws", WsHandler), 
+			(r"/assets/(.*)", tornado.web.StaticFileHandler, {"path":"../Website/assets"}),
+			(r"/images/(.*)", tornado.web.StaticFileHandler, {"path":"../Website/images"})])
 			webApp.listen(port = self.tornadoPort, address = self.tornadoAddress)
-		except Exception:
+		except Exception as reason:
 			print("Fatal error: Unable to create Tornado application")
+			print("Reason = " + str(reason))
 			self.stop()
 			self.syncEvent.set()
 
-		while self.running == True:
+		if self.running == True:
 			self.syncEvent.set()
-			tornado.ioloop.IOLoop.current().start()
-
-		print("Tornado server stopped")
-		return
+			try:
+				tornado.ioloop.IOLoop.current(instance=False).start()
+			except Exception as reason:
+				print("Tornado Loop start error because " + str(reason))
+		else:
+			print("Tornado server stopped")
+			return
 
 	def stop(self):
 		self.running = False
-		tornado.ioloop.IOLoop.current().stop()
+		try:
+			tornado.ioloop.IOLoop.current().stop()
+		except Exception as reason:
+			print("Tornado Loop stop error because " + str(reason))
+			
 		return

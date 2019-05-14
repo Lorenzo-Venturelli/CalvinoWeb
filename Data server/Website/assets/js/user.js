@@ -1,4 +1,4 @@
-var ws = WebSocket("wss://tggstudio.eu:8888/ws");
+var ws = WebSocket("wss://tggstudio.eu/ws");
 var ctx = document.getElementById('graph').getContext('2d');
 
 function setDefault(){
