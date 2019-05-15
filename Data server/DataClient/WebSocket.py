@@ -19,7 +19,9 @@ class WsHandler(tornado.websocket.WebSocketHandler):
 	def open(self):
 		print("Cioccolata")
 		self.pastMsg = False
-		self.scheduler = TornadoScheduler()
+		LOCAL_TIMEZONE = datetime.datetime.now(datetime.timezone.utc).astimezone().tzinfo
+		print(LOCAL_TIMEZONE)
+		self.scheduler = TornadoScheduler({'apscheduler.timezone': LOCAL_TIMEZONE})
 		self.sched.start()
 		print("Connected")
 		#self.scheduler.shutdown(wait=False)
