@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 import threading
+import os, inspect, signal
 import logging
 import socket
 import time
@@ -14,6 +15,7 @@ import encriptionHandler
 startingTime = datetime.datetime.now()
 startingTime = startingTime.astimezone()
 socketBinded = True
+safeExit = None
 
 class DataServerAccepter(threading.Thread):
     def __init__(self, address, port, dataProxy, dataProxyLock, dataProxySyncEvent, logger):
@@ -249,123 +251,148 @@ def optimizeSQL(dataProxy, reason, firstTime = None):
     startingTime = startingTime.astimezone()
     return result
 
-def shutdown(mqttHandler, dataProxyHandler, dataServerListener, startingTime):
-    mqttHandler.stop()
-    dataServerListener.stop()
-    mqttHandler.join()
-    dataServerListener.join()
-    optimizeSQL(dataProxy = dataProxyHandler, reason = True, firstTime = startingTime)
-    return
+class shutdownHandler():
+    def __init__(self, mqttHandler, dataProxyHandler, dataServerListener, startingTime):
+        self.mqttHandler = mqttHandler
+        self.dataProxyHandler = dataProxyHandler
+        self.dataServerListener = dataServerListener
+        self.startingTime = startingTime
+
+    def shutdown(self):
+        self.mqttHandler.stop()
+        self.dataServerListener.stop()
+        self.mqttHandler.join()
+        self.dataServerListener.join()
+        optimizeSQL(dataProxy = dataProxyHandler, reason = True, firstTime = startingTime)
+        return
+
+def sysStop(signum, frame):
+    safeExit.shutdown()
+    quit()
 
 if __name__ == "__main__":
     mqttSyncEvent = [threading.Event(), threading.Event()]
     dataProxySyncEvent = threading.Event()
     dataProxyLock = threading.Lock()
     lastData = None
-    loggingFile = '../Files/logs/DataServer.log'
     logger = logging.getLogger(name = "DataServer")
-    logging.basicConfig(filename = loggingFile, level = logging.INFO)
+    filesPath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))   # Get absolute path of files
+    match = re.match(pattern = r"([A-z \/]+)(\/[A-z]+)", string = str(filesPath))
+    filesPath = match.group(1) + "/Files"
 
     try:
-        with open(file = "../Files/settings.json", mode = 'r') as settingsFile:
+        with open(file = filesPath + "/settings.json", mode = 'r') as settingsFile:
             settings = json.load(fp = settingsFile)
     except FileNotFoundError:
-        logging.error("Settings file not found")
+        logger.error("Settings file not found")
         settings = dict()
     except json.JSONDecodeError:
-        logging.error("Settings file has an invalid format")
+        logger.error("Settings file has an invalid format")
         settings = dict()
     except Exception:
-        logging.error("An unknown error occurred while reading the settings file")
+        logger.error("An unknown error occurred while reading the settings file")
         settings = dict()
 
     if "brkAdr" in settings.keys():
         brkAdr = settings["brkAdr"]
     else:
-        print('''Error: No broker address is present in settings file! Please provide it''')
-        brkAdr = input(prompt = "> ")
+        print("Critical Error: No broker address is present in settings file")
+        quit()
 
     if "brkUsername" in settings.keys():
         brkUsername = settings["brkUsername"]
     else:
-        print('''Error: No broker username is present in settings file! Please provide it''')
-        brkUsername = input(prompt = "> ")
+        print("Critical Error: No broker username is present in settings file!")
+        quit()
 
     if "brkPassword" in settings.keys():
         brkPassword = settings["brkPassword"]
     else:
-        print('''Error: No broker password is present in settings file! Please provide it''')
-        brkPassword = input(prompt = "> ")
+        print("Critical Error: No broker password is present in settings file")
+        quit()
 
     if "sqlAdr" in settings.keys():
         sqlAdr = settings["sqlAdr"]
     else:
-        print('''Error: No SQL Server address is present in settings file! Please provide it''')
-        sqlAdr = input(prompt = "> ")
+        print("Critical Error: No SQL Server address is present in settings file")
+        quit()
 
     if "sqlUsername" in settings.keys():
         sqlUsername = settings["sqlUsername"]
     else:
-        print('''Error: No SQL username is present in settings file! Please provide it''')
-        sqlUsername = input(prompt = "> ")
+        print("Critical Error: No SQL username is present in settings file!")
+        quit()
 
     if "sqlPassword" in settings.keys():
         sqlPassword = settings["sqlPassword"]
     else:
-        print('''Error: No SQL password is present in settings file! Please provide it''')
-        sqlPassword = input(prompt = "> ")
+        print("Critical Error: No SQL password is present in settings file!")
+        quit()
 
     if "sqlName" in settings.keys():
         sqlName = settings["sqlName"]
     else:
-        print('''Error: No SQL DB Name is present in settings file! Please provide it''')
-        sqlName = input(prompt = "> ")
+        print("Critical Error: No SQL DB Name is present in settings file!")
+        quit()
+
+    if "logPath" in settings.keys():
+        loggingFile = settings["logPath"]
+        if loggingFile[-1] == '/':
+            loggingFile = loggingFile + "DataServer.log"
+        else:
+            loggingFile = loggingFile + "/DataServer.log"
+        logging.basicConfig(filename = loggingFile, level = logging.INFO)
+    else:
+        print("Critical Error: No Log Path is provided by settings file! Unable to start")
+        quit()
 
     try:
         sqlHandler = SQL.CalvinoDB(databaseAddress = sqlAdr, databaseName = sqlName, user = sqlUsername, password = sqlPassword, loggingFile = loggingFile)
     except Exception as reason:
-        logging.critical("SQL initialization error. Reason = " + str(reason))
+        logger.critical("SQL initialization error. Reason = " + str(reason))
         quit()
 
     try:
         dataProxyHandler = DataProxy.dataProxy(SQLProxy = sqlHandler, syncEvents = dataProxySyncEvent, lock = dataProxyLock, proxy = lastData, loggingFile = loggingFile)
     except Exception as reason:
-        logging.critical("Data Proxy initialization error. Reason = " + str(reason))
+        logger.critical("Data Proxy initialization error. Reason = " + str(reason))
         quit()
     
     try:
         mqttHandler = MQTT.MQTTclient(brokerAddress = brkAdr, username = brkUsername, password = brkPassword, syncEvents = mqttSyncEvent, dataProxy = dataProxyHandler, loggingFile = loggingFile)
     except Exception as reason:
-        loggig.critical("MQTT initialization error. Reason = " + str(reason))
+        logger.critical("MQTT initialization error. Reason = " + str(reason))
         quit()
 
     try:
         dataServerListener = DataServerAccepter(address = '', port = 2000, dataProxy = dataProxyHandler, dataProxyLock = dataProxyLock, dataProxySyncEvent = dataProxySyncEvent, logger = logger)
     except Exception as reason:
-        loggign.critical("Data Server can not be started. Reason = " + str(reason))
+        logger.critical("Data Server can not be started. Reason = " + str(reason))
         quit()
 
     mqttHandler.start()
 
     mqttSyncEvent[0].wait(timeout = None)
     if mqttSyncEvent[1].is_set() == True:
-        logging.critical("MQTT connection initialization error")
-        logging.info("Server stopped because fatal MQTT connection error")
+        logger.critical("MQTT connection initialization error")
+        logger.info("Server stopped because fatal MQTT connection error")
         dataServerListener.stop()
         quit()
     else:
-        logging.info("MQTT connection initialized")
+        logger.info("MQTT connection initialized")
         mqttSyncEvent[0].clear()
         mqttSyncEvent[1].clear()
         dataServerListener.start()
+        safeExit = shutdownHandler(mqttHandler = mqttHandler, dataProxyHandler = dataProxyHandler, dataServerListener = dataServerListener, startingTime = startingTime)
+        signal.signal(signal.SIGTERM, sysStop)
 
         try:
             while True:
                 time.sleep(3600)
                 optimizeSQL(dataProxy = dataProxyHandler, reason = False)
         except KeyboardInterrupt:
-            shutdown(mqttHandler = mqttHandler, dataProxyHandler = dataProxyHandler, dataServerListener = dataServerListener, startingTime = startingTime)
-            logging.info("Server stopped because of user")
+            safeExit.shutdown()
+            logger.info("Server stopped because of user")
             quit()
 
         
