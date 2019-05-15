@@ -1,15 +1,7 @@
 #!/usr/bin/python3
-import threading
-import os, inspect, signal
-import logging
-import socket
-import time
-import json
-import re
-import datetime
-import DataProxy
-import MQTT
-import SQL
+import threading, os, inspect, signal, logging, socket, time
+import re, datetime, json
+import DataProxy, MQTT, SQL
 import encriptionHandler
 
 startingTime = datetime.datetime.now()
@@ -230,6 +222,21 @@ class DataClient(threading.Thread):
         self.logger.info("Client " + str(self.address[0]) + " disconnected")
         return
 
+class shutdownHandler():
+    def __init__(self, mqttHandler, dataProxyHandler, dataServerListener, startingTime):
+        self.mqttHandler = mqttHandler
+        self.dataProxyHandler = dataProxyHandler
+        self.dataServerListener = dataServerListener
+        self.startingTime = startingTime
+
+    def shutdown(self):
+        self.mqttHandler.stop()
+        self.dataServerListener.stop()
+        self.mqttHandler.join()
+        self.dataServerListener.join()
+        optimizeSQL(dataProxy = dataProxyHandler, reason = True, firstTime = startingTime)
+        return
+
 def optimizeSQL(dataProxy, reason, firstTime = None):
     if reason == True:
         if firstTime != None:
@@ -251,21 +258,6 @@ def optimizeSQL(dataProxy, reason, firstTime = None):
     startingTime = startingTime.astimezone()
     return result
 
-class shutdownHandler():
-    def __init__(self, mqttHandler, dataProxyHandler, dataServerListener, startingTime):
-        self.mqttHandler = mqttHandler
-        self.dataProxyHandler = dataProxyHandler
-        self.dataServerListener = dataServerListener
-        self.startingTime = startingTime
-
-    def shutdown(self):
-        self.mqttHandler.stop()
-        self.dataServerListener.stop()
-        self.mqttHandler.join()
-        self.dataServerListener.join()
-        optimizeSQL(dataProxy = dataProxyHandler, reason = True, firstTime = startingTime)
-        return
-
 def sysStop(signum, frame):
     safeExit.shutdown()
     quit()
@@ -284,13 +276,13 @@ if __name__ == "__main__":
         with open(file = filesPath + "/settings.json", mode = 'r') as settingsFile:
             settings = json.load(fp = settingsFile)
     except FileNotFoundError:
-        logger.error("Settings file not found")
+        print("Critical Error: Settings file not found")
         settings = dict()
     except json.JSONDecodeError:
-        logger.error("Settings file has an invalid format")
+        print("Critical Error: Settings file has an invalid format")
         settings = dict()
     except Exception:
-        logger.error("An unknown error occurred while reading the settings file")
+        print("Critical Error: An unknown error occurred while reading the settings file")
         settings = dict()
 
     if "brkAdr" in settings.keys():
