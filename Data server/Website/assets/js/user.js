@@ -2,6 +2,7 @@ var ws = WebSocket("wss://tggstudio.eu/ws");
 var ctx = document.getElementById('graph').getContext('2d');
 var currentRTSN = document.getElementById("RTSN");
 currentRTSN = currentRTSN.options[currentRTSN.selectedIndex].text;
+var pingInterval = null
 
 function setDefault(){
     var today = new Date();
@@ -15,6 +16,8 @@ function setDefault(){
     document.getElementById("GLTT").defaultValue = "01:00";
 
     buildGraph();
+
+    pingInterval = setInterval(pingServer, 5000);
 }
 
 function RTsetSensor(){
@@ -29,14 +32,10 @@ function RTsetSensor(){
 }
 
 function RTupdate(temp, light, pressure, highness){
-    var element = document.getElementById("rtTemp");
-    element.nodeValue = temp;
-    element = document.getElementById("rtLight");
-    element.nodeValue = light;
-    element = document.getElementById("rtPressure");
-    element.nodeValue = pressure;
-    element = document.getElementById("rtHighness");
-    element.nodeValue = highness
+    document.getElementById("rtTemp").innerText = temp;
+    document.getElementById("rtLight").innerText = light;
+    document.getElementById("rtPressure").innerText = pressure;
+    document.getElementById("rtHighness").innerText = highness;
     return;
 }
 
@@ -45,13 +44,13 @@ function GDrequest(){
     var sensorNumber = x.options[x.selectedIndex].text;
     x = document.getElementById("GDT");
     var dataType = x.options[x.selectedIndex].text;
-    var Fdata = document.getElementById("GFTD").value
-    var Ldata = document.getElementById("GLTD").value
-    var Ftime = document.getElementById("GFTT").value
-    var Ltime = document.getElementById("GLTT").value
+    var Fdata = document.getElementById("GFTD").value;
+    var Ldata = document.getElementById("GLTD").value;
+    var Ftime = document.getElementById("GFTT").value;
+    var Ltime = document.getElementById("GLTT").value;
 
-    var firstTime = Fdata + " " + Ftime + ":00"
-    var lastTime = Ldata + " " + Ltime + ":00"
+    var firstTime = Fdata + " " + Ftime + ":00";
+    var lastTime = Ldata + " " + Ltime + ":00";
 
     sendGDrequest(sensorNumber, dataType, firstTime, lastTime);
     return;
@@ -68,6 +67,11 @@ function sendGDrequest(sensorNumber, dataType, firstTime, lastTime){
     var message = {"grapRequest" : {"SN" : sensorNumber, "DT" : dataType, "FT" : firstTime, "LT" : lastTime}};
     message = JSON.stringify(message)
     ws.send(message);
+    return;
+}
+
+function pingServer(){
+    ws.send("ping");
     return;
 }
 
@@ -105,11 +109,18 @@ function buildGraph(){
 }
 
 ws.addEventListener("message", function (message){
-    console.log(message)
-    if (message["type"] == "RTD"){
-        RTupdate(message["temp"], message["light"], message["pressure"], message["highness"]);
+    var receivedData = JSON.parse(message.data)
+    if (receivedData["type"] == "rtd"){
+        RTupdate(receivedData["temp"], receivedData["light"], receivedData["pressure"], receivedData["highness"]);
     }
-    else{
-        //
+    else if (receivedData["type"] == "pong"){
+        if (receivedData["status"] == "close"){
+            clearInterval(pingInterval);
+            ws.close();
+        }
     }
+});
+
+ws.addEventListener("close", function(){
+    console.log("OK")
 });

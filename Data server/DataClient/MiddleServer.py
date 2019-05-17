@@ -69,12 +69,12 @@ if __name__ == "__main__":
 
     tornadoSyncEvent = threading.Event()
     dataClientSyncEvent = threading.Event()
-    dataClient = DataClient.DataRequest(serverAddress = dataServerAddress, serverPort = dataServerPort, syncEvent = dataClientSyncEvent)
+    dataClient = DataClient.DataRequest(serverAddress = dataServerAddress, serverPort = dataServerPort, syncEvent = dataClientSyncEvent, loggingFile = loggingFile)
     dataClient.start()
     dataClientSyncEvent.wait()
     dataClientSyncEvent.clear()
     if dataClient.running == True:
-        tornadoHandler = WebSocket.frontEndHandler(tornadoAddress = middleServerAddress, tornadoPort = middleServerPort, dataClientHandler = dataClient, syncEvent = tornadoSyncEvent)
+        tornadoHandler = WebSocket.frontEndHandler(tornadoAddress = middleServerAddress, tornadoPort = middleServerPort, dataClientHandler = dataClient, syncEvent = tornadoSyncEvent, loggingFile = loggingFile)
         tornadoHandler.start()
         tornadoSyncEvent.wait()
         tornadoSyncEvent.clear()

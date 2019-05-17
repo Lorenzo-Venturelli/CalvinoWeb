@@ -1,11 +1,8 @@
-import socket
-import json
-import threading
+import socket, json, threading, queue, logging
 import encriptionHandler
-import queue
 
 class DataRequest(threading.Thread):
-    def __init__(self, serverAddress, serverPort, syncEvent):
+    def __init__(self, serverAddress, serverPort, syncEvent, loggingFile):
         self.serverAddress = serverAddress
         self.serverPort = int(serverPort)
         self.syncEvent = syncEvent
@@ -16,6 +13,8 @@ class DataRequest(threading.Thread):
         self.running = True
         self.reaquestQueue = queue.Queue()
         self.responseQueue = queue.Queue()
+        self.__logger = logging.getLogger(name = "Data Client")
+        logging.basicConfig(filename = loggingFile, level = logging.INFO)
         threading.Thread.__init__(self, name = "Data Client Thread", daemon = False)
 
     def disconnect(self):
@@ -47,9 +46,9 @@ class DataRequest(threading.Thread):
                             if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
                                 answer = answer.decode()
                                 if answer == "200":
-                                    print("RSA handshake succeded")
+                                    self.__logger.info("RSA handshake succeded")
                                     return True
-        print("Fatal security error: Error occurred while negotiating RSA keys with Data Server. Connection closed for security reasons")
+        self.__logger.error("Error occurred while negotiating RSA keys with Data Server. Connection closed for security reasons")
         return False
 
     def __generateEncryptedMessage(self, raw, byteObject = False):
@@ -67,7 +66,7 @@ class DataRequest(threading.Thread):
         try:
             self.clientSocket.connect((self.serverAddress, self.serverPort))
         except Exception:
-            print("Fatal error: Unable to connect to  Data Server")
+            self.__logger.critical("Unable to connect to  Data Server")
             self.disconnect()
 
         if self.running == True:
@@ -86,35 +85,54 @@ class DataRequest(threading.Thread):
             else:
                 self.responseQueue.put(result)
 
-        print("Data client disconnected")
+        self.__logger.info("Data client disconnected")
 
     def __executeRequest(self, message):
+        error = None
         jMessage = json.dumps(message)
         (message, key) = self._DataRequest__generateEncryptedMessage(raw = jMessage, byteObject = False)
         self.clientSocket.sendall(key)
-        answer = self.clientSocket.recv(1024)
+        answer = self.clientSocket.recv(2048)
         if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
             answer = answer.decode()
             if answer == "200":
                 self.clientSocket.sendall(message)
-                answer = self.clientSocket.recv(1024)
+                answer = self.clientSocket.recv(2048)
                 if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
                     answer = answer.decode()
                     if answer == "200":
-                        answer = self.clientSocket.recv(1024)
+                        answer = self.clientSocket.recv(2048)
                         if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
                             RSAsecret = answer
                             self.clientSocket.sendall(str("200").encode())
-                            answer = self.clientSocket.recv(1024)
+                            answer = self.clientSocket.recv(2048)
                             if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
                                 AESsecret = answer
                                 plainAnswer = self._DataRequest__decryptMessage(AESsecret = AESsecret, RSAsecret = RSAsecret, byteObject = False)
                                 self.clientSocket.sendall(str("200").encode())
-                                answer = self.clientSocket.recv(1024)
+                                answer = self.clientSocket.recv(2048)
                                 if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
                                     if answer.decode() == "200":
                                         return(plainAnswer)
-        print("Comunication error: An error occurred while comunicating with Data Server")
+                                    else:
+                                        error = "Failed ACK 3 - Got " + str(answer.decode())
+                                else:
+                                    error = "Failed ACK 3 - Got anything"
+                            else:
+                                error = "Failed reciving AES secret"
+                        else:
+                            error = "Failed reciving RSA secret"
+                    else:
+                         error = "Failed ACK 2 - Got " + str(answer.decode())
+                else:
+                    error = "Failed ACK 2 - Got anything"
+            else:
+                error = "Failed ACK 1 - Got " + str(answer.decode())
+        else:
+            error = "Failed ACK 1 - Got anything"
+
+        self.__logger.warning("An error occurred while comunicating with Data Server")
+        self.__logger.info("Reason: " + error)
         return None
 
     def insertRequest(self, request):

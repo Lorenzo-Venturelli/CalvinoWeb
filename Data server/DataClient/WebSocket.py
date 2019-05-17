@@ -1,112 +1,157 @@
-import tornado.ioloop
-import tornado.web
-import tornado.websocket
-from tornado import gen
-import time
-import threading
-import datetime
-import json
+from tornado import ioloop, web, websocket, gen
 from apscheduler.schedulers.tornado import TornadoScheduler
+import time, threading, datetime, json, logging, ast
 import DataClient
 
-class MainHandler(tornado.web.RequestHandler):
+serverStatus = True
+dataClient = None
+
+class MainHandler(web.RequestHandler):
 	def get(self):
 		self.render("../Website/index.html")
 
-class WsHandler(tornado.websocket.WebSocketHandler):
+class WsHandler(websocket.WebSocketHandler):
 	def open(self):
-		try:
-			self.scheduler = TornadoScheduler({'apscheduler.timezone': "Europe/Rome"})
-			self.scheduler.start()
+		self.__logger = logging.getLogger(name = "Tornado")
+		self.currentRTsensorNumber = 1
+		try:	
+			self.RTscheduler = ioloop.PeriodicCallback(self.periodicRTupdate, callback_time = 15000)
+			self.RTscheduler.start()
+			self.__logger.info("Client " + str(self.request.remote_ip) + " connected")
 		except Exception as reason:
-			print(str(reason))
-		print("Connected")
-		
+			self.__logger.error("Errors occurred while creating scheduler for client " + str(self.request.remote_ip))
+			self.__logger.info("Reason: " + str(reason))
 
-	def send(self, message):
-		temp = self.dataRequest(message, 'temperatura')
-		luce = self.dataRequest(message, 'luce')
-		pressione = self.dataRequest(message, 'pressione')
-		altitudine = self.dataRequest(message, 'altitudine')
-		message = {"temperatura" : temp, "luce" : luce, "pressione" : pressione, "altitudine" : altitudine}
-		jMessage = json.dumps(message)
-		self.write_message(jMessage)
+		self.sendRTdata(sensorNumber = self.currentRTsensorNumber)
 
-	def dataRequest(self, sn, dt):
-		timestamp = str(datetime.datetime.now())
-		timestamp = "\'" + timestamp[:-7]  + "\'"
-		dict={"SN": sn ,"DT": dt,"FT": timestamp, "LT": timestamp }
-		self.dataClientHandler.insertRequest(dict)
-		response = self.dataClientHandler.getResponse()
-		return response
+
+	def periodicRTupdate(self):
+		self.sendRTdata(sensorNumber = self.currentRTsensorNumber)
+
+	def sendRTdata(self, sensorNumber):
+		print(sensorNumber)
+		dataTime = (str(datetime.datetime.now())[:-7], str(datetime.datetime.now() + datetime.timedelta(minutes = -1))[:-7])
+		temp = self.requestRTdata(sensorNumber, 'temperatura', dataTime)
+		light = self.requestRTdata(sensorNumber, 'luce', dataTime)
+		pressure = self.requestRTdata(sensorNumber, 'pressione', dataTime)
+		highness = self.requestRTdata(sensorNumber, 'altitudine', dataTime)
+		temp = self.__parseData(data = ast.literal_eval(temp))
+		light = self.__parseData(data = ast.literal_eval(light))
+		pressure = self.__parseData(data = ast.literal_eval(pressure))
+		highness = self.__parseData(data = ast.literal_eval(highness))
+
+		rtResponse = {"type" : "rtd", "temp" : temp, "light" : light, "pressure" : pressure, "highness" : highness}
+		print(rtResponse)
+		rtResponse = json.dumps(rtResponse)
+		self.write_message(rtResponse)
+		print(str({"type" : "rtd", "temp" : temp, "light" : light, "pressure" : pressure, "highness" : highness}))
+		return
+
+	def requestRTdata(self, sensorNumber, dataType, dataTime):
+		request = {"SN": sensorNumber ,"DT": dataType,"FT": dataTime[1], "LT": dataTime[0]}
+		if dataClient.insertRequest(request) == True:
+			response = dataClient.getResponse()	
+			return response
+		else:
+			return False
+
+	def __parseData(self, data):
+		if type(data) == dict:
+			valueNumber = 0
+			value = 0
+			for item in data.keys():
+				value = value + float(data[item][2])
+				valueNumber = valueNumber + 1
+			if valueNumber != 0:
+				value = value / valueNumber
+				return round(value, 1)
+			else:
+				return False
+		else:
+			return False
 
 	def on_message(self, message):
-		parsedMessage = json.loads(message)
-		if "realTimeSN" in parsedMessage.keys():
-			newSensorID = parsedMessage["realTimeSN"]
-			print("RT + " + str(parsedMessage["realTimeSN"]))
-		elif "grapRequest" in parsedMessage.keys():
-			sensorNumber = parsedMessage["grapRequest"]["SN"]
-			dataType = parsedMessage["grapRequest"]["DT"]
-			firstTime = parsedMessage["grapRequest"]["FT"]
-			lastTime = parsedMessage["grapRequest"]["LT"]
-			print(sensorNumber + " " + dataType + " " + firstTime + " " + lastTime)
-		else:
-			print("No vecchio no")
-			
-		#if message != self.pastMsg:
-			#if self.pastMsg != False:
-				#self.scheduler.remove_job('send')
-			#self.pastMsg = message
-			#self.scheduler.add_job(self.send, trigger = 'interval', args = message, seconds = 15 , id='send')
-		#else:
-			#print("No sensor number change")
-			#return
+		global serverStatus
 
-#    self.write_message(message)
+		if message == "ping":
+			if serverStatus == False:
+				message = {"type":"pong", "status":"close"}
+				message = json.dumps(message)
+				self.write_message(message)
+			else:
+				message = message = {"type":"pong", "status":"open"}
+				message = json.dumps(message)
+				self.write_message(message)
+		else:
+			parsedMessage = json.loads(message)
+			if "realTimeSN" in parsedMessage.keys():
+				self.currentRTsensorNumber = int(parsedMessage["realTimeSN"])
+				self.sendRTdata(sensorNumber = self.currentRTsensorNumber)
+			elif "grapRequest" in parsedMessage.keys():
+				sensorNumber = parsedMessage["grapRequest"]["SN"]
+				dataType = parsedMessage["grapRequest"]["DT"]
+				firstTime = parsedMessage["grapRequest"]["FT"]
+				lastTime = parsedMessage["grapRequest"]["LT"]
+			else:
+				print("No vecchio no")
+
 	def on_close(self):
-		print("ws disconnected")
-		self.scheduler.shutdown(wait=False)
+		self.RTscheduler.stop()
+		self.__logger.info("Client " + str(self.request.remote_ip) + " disconnected")
 
 class frontEndHandler(threading.Thread):
-	def __init__(self, tornadoAddress, tornadoPort, dataClientHandler, syncEvent):
+	def __init__(self, tornadoAddress, tornadoPort, dataClientHandler, syncEvent, loggingFile):
+		global dataClient
+
 		self.tornadoPort = int(tornadoPort)
-		self.dataClientHandler = dataClientHandler
+		dataClient = dataClientHandler
 		self.tornadoAddress = tornadoAddress
 		self.syncEvent = syncEvent
 		self.running = True
+		self.ioLoop = None
+		self.__logger = logging.getLogger(name = "Tornado")
+		logging.basicConfig(filename = loggingFile, level = logging.INFO)
 		threading.Thread.__init__(self, name = "Tornado thread", daemon = False)
 
 	def run(self):
+		global serverStatus
+
 		try:
-			ioLoop = tornado.ioloop.IOLoop()
+			ioLoop = ioloop.IOLoop()
 			ioLoop.make_current()
-			webApp = tornado.web.Application([(r"/", MainHandler), (r"/ws", WsHandler),
-			(r"/assets/(.*)", tornado.web.StaticFileHandler, {"path":"../Website/assets"}),
-			(r"/images/(.*)", tornado.web.StaticFileHandler, {"path":"../Website/images"})])
+			webApp = web.Application([(r"/", MainHandler), (r"/ws", WsHandler),
+			(r"/assets/(.*)", web.StaticFileHandler, {"path":"../Website/assets"}),
+			(r"/images/(.*)", web.StaticFileHandler, {"path":"../Website/images"})])
 			webApp.listen(port = self.tornadoPort, address = self.tornadoAddress)
 		except Exception as reason:
-			print("Fatal error: Unable to create Tornado application")
-			print("Reason = " + str(reason))
+			self.__logger.critical("Unable to create Tornado application")
+			self.__logger.info("Reason: " + str(reason))
 			self.stop()
 			self.syncEvent.set()
 
 		if self.running == True:
 			self.syncEvent.set()
 			try:
-				tornado.ioloop.IOLoop.instance().start()
+				self.ioLoop = ioloop.IOLoop.instance()
+				serverStatus = True
+				self.ioLoop.start()
+				self.ioLoop.close()
 			except Exception as reason:
-				print("Tornado Loop start error because " + str(reason))
-		else:
-			print("Tornado server stopped")
-			return
+				self.__logger.critical("Unable to create Tornado IO Loop")
+				self.__logger.info("Reason: " + str(reason))
+
+		self.__logger.info("Tornado server closed")
+		return
 
 	def stop(self):
+		global serverStatus
+
 		self.running = False
 		try:
-			tornado.ioloop.IOLoop.instance().stop()
-			
+			self.ioLoop.stop()
+			serverStatus = False
 		except Exception as reason:
-			print("Tornado Loop stop error because " + str(reason))
+			self.__logger.error("Error occurred while stopping IO Loop")
+			self.__logger.info("Reason: " + str(reason))
 
 		return

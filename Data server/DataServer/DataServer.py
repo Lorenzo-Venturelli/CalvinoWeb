@@ -139,11 +139,11 @@ class DataClient(threading.Thread):
         else:
             while self.clientConnected == True:
                 try:
-                    request = self.clientSocket.recv(1024)
+                    request = self.clientSocket.recv(2048)
                     if request != None and request != 0 and request != '' and request != str.encode(''):
                         RSAsecret = request
                         self.clientSocket.sendall(str("200").encode())
-                        request = self.clientSocket.recv(1024)
+                        request = self.clientSocket.recv(2048)
                         if request != None and request != 0 and request != '' and request != str.encode(''):
                             AESsecret = request
                             self.clientSocket.sendall(str("200").encode())
@@ -168,7 +168,7 @@ class DataClient(threading.Thread):
                     continue
 
                 if "SN" in request.keys() and "DT" in request.keys() and "FT" in request.keys() and "LT" in request.keys():
-                    if request["SN"] != None and request["DT"] != None and request["FT"] != None and request["LT"] != None:       
+                    if request["SN"] != None and request["DT"] != None and request["FT"] != None and request["LT"] != None:     
                         result = self.dataProxy.requestData(sensorNumber = request["SN"], dataType = request["DT"], firstTime = request["FT"], lastTime = request["LT"])
                         if result[0] == True:
                             result = result[1]
@@ -192,11 +192,11 @@ class DataClient(threading.Thread):
                 
                 try:
                     self.clientSocket.sendall(key)
-                    answer = self.clientSocket.recv(1024)
+                    answer = self.clientSocket.recv(2048)
                     if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
                         if answer.decode() == "200":
                             self.clientSocket.sendall(resultJSON)
-                            answer = self.clientSocket.recv(1024)
+                            answer = self.clientSocket.recv(2048)
                             if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
                                 if answer.decode() == "200":
                                     self.clientSocket.sendall(status)
