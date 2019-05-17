@@ -85,6 +85,6 @@ if __name__ == "__main__":
                 while True:
                     time.sleep(60)
             except KeyboardInterrupt:
-                safeExit()
+                safeExit.shutdown()
                 logger.info("Server stopped because of user")
                 quit()

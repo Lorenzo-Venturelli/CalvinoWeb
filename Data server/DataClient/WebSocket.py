@@ -2,13 +2,11 @@ import tornado.ioloop
 import tornado.web
 import tornado.websocket
 from tornado import gen
-
 import time
 import threading
 import datetime
 import json
 from apscheduler.schedulers.tornado import TornadoScheduler
-
 import DataClient
 
 class MainHandler(tornado.web.RequestHandler):
@@ -17,14 +15,13 @@ class MainHandler(tornado.web.RequestHandler):
 
 class WsHandler(tornado.websocket.WebSocketHandler):
 	def open(self):
-		print("Cioccolata")
-		self.pastMsg = False
-		LOCAL_TIMEZONE = datetime.datetime.now(datetime.timezone.utc).astimezone().tzinfo
-		print(LOCAL_TIMEZONE)
-		self.scheduler = TornadoScheduler({'apscheduler.timezone': LOCAL_TIMEZONE})
-		self.sched.start()
+		try:
+			self.scheduler = TornadoScheduler({'apscheduler.timezone': "Europe/Rome"})
+			self.scheduler.start()
+		except Exception as reason:
+			print(str(reason))
 		print("Connected")
-		#self.scheduler.shutdown(wait=False)
+		
 
 	def send(self, message):
 		temp = self.dataRequest(message, 'temperatura')
@@ -44,17 +41,32 @@ class WsHandler(tornado.websocket.WebSocketHandler):
 		return response
 
 	def on_message(self, message):
-		if message != self.pastMsg:
-			if self.pastMsg != False:
-				self.scheduler.remove_job('send')
-			self.pastMsg = message
-			self.scheduler.add_job(self.send, trigger = 'interval', args = message, seconds = 15 , id='send')
+		parsedMessage = json.loads(message)
+		if "realTimeSN" in parsedMessage.keys():
+			newSensorID = parsedMessage["realTimeSN"]
+			print("RT + " + str(parsedMessage["realTimeSN"]))
+		elif "grapRequest" in parsedMessage.keys():
+			sensorNumber = parsedMessage["grapRequest"]["SN"]
+			dataType = parsedMessage["grapRequest"]["DT"]
+			firstTime = parsedMessage["grapRequest"]["FT"]
+			lastTime = parsedMessage["grapRequest"]["LT"]
+			print(sensorNumber + " " + dataType + " " + firstTime + " " + lastTime)
 		else:
-			print("No sensor number change")
-			return
+			print("No vecchio no")
+			
+		#if message != self.pastMsg:
+			#if self.pastMsg != False:
+				#self.scheduler.remove_job('send')
+			#self.pastMsg = message
+			#self.scheduler.add_job(self.send, trigger = 'interval', args = message, seconds = 15 , id='send')
+		#else:
+			#print("No sensor number change")
+			#return
+
 #    self.write_message(message)
-#	def on_close(self):
-#		print("ws disconnected")
+	def on_close(self):
+		print("ws disconnected")
+		self.scheduler.shutdown(wait=False)
 
 class frontEndHandler(threading.Thread):
 	def __init__(self, tornadoAddress, tornadoPort, dataClientHandler, syncEvent):
@@ -82,7 +94,7 @@ class frontEndHandler(threading.Thread):
 		if self.running == True:
 			self.syncEvent.set()
 			try:
-				tornado.ioloop.IOLoop.current(instance=False).start()
+				tornado.ioloop.IOLoop.instance().start()
 			except Exception as reason:
 				print("Tornado Loop start error because " + str(reason))
 		else:
@@ -92,7 +104,8 @@ class frontEndHandler(threading.Thread):
 	def stop(self):
 		self.running = False
 		try:
-			tornado.ioloop.IOLoop.current().stop()
+			tornado.ioloop.IOLoop.instance().stop()
+			
 		except Exception as reason:
 			print("Tornado Loop stop error because " + str(reason))
 

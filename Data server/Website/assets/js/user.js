@@ -1,5 +1,7 @@
 var ws = WebSocket("wss://tggstudio.eu/ws");
 var ctx = document.getElementById('graph').getContext('2d');
+var currentRTSN = document.getElementById("RTSN");
+currentRTSN = currentRTSN.options[currentRTSN.selectedIndex].text;
 
 function setDefault(){
     var today = new Date();
@@ -18,8 +20,12 @@ function setDefault(){
 function RTsetSensor(){
     var sensorNumber = document.getElementById("RTSN");
     var value = sensorNumber.options[sensorNumber.selectedIndex].text;
-    sendRTupdate(value);
-    return
+    if (value != currentRTSN){
+        currentRTSN = value;
+        sendRTupdate(value);
+    }
+    
+    return;
 }
 
 function RTupdate(temp, light, pressure, highness){
@@ -52,17 +58,22 @@ function GDrequest(){
 }
 
 function sendRTupdate(sensorNumber){
-    ws.send({"realTimeSN" : sensorNumber});
+    var message = {"realTimeSN" : sensorNumber};
+    message = JSON.stringify(message)
+    ws.send(message);
     return;
 }
 
 function sendGDrequest(sensorNumber, dataType, firstTime, lastTime){
-    ws.send({"grapRequest" : [{"SN" : sensorNumber, "DT" : dataType, "FT" : firstTime, "LT" : lastTime}]});
+    var message = {"grapRequest" : {"SN" : sensorNumber, "DT" : dataType, "FT" : firstTime, "LT" : lastTime}};
+    message = JSON.stringify(message)
+    ws.send(message);
     return;
 }
 
 function buildGraph(){
-    var datas = [20.1, 22, 30, 20, 21, 20.1];
+    var datas = [];
+    var labels = []
     var dataType = "Temperatura in °C"
     var minValue = Math.min(...datas) - 2;
 
@@ -70,7 +81,7 @@ function buildGraph(){
     var chart = new Chart(ctx, {
         type: 'line',
         data: {
-        labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
+        labels: labels,
         datasets: [{
             label: dataType,
             data: datas,
@@ -94,6 +105,7 @@ function buildGraph(){
 }
 
 ws.addEventListener("message", function (message){
+    console.log(message)
     if (message["type"] == "RTD"){
         RTupdate(message["temp"], message["light"], message["pressure"], message["highness"]);
     }
