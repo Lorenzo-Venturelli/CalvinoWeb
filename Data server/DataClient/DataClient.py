@@ -1,4 +1,4 @@
-import socket, json, threading, queue, logging
+import socket, json, threading, queue, logging, struct
 import encriptionHandler
 
 class DataRequest(threading.Thread):
@@ -91,37 +91,26 @@ class DataRequest(threading.Thread):
         error = None
         jMessage = json.dumps(message)
         (message, key) = self._DataRequest__generateEncryptedMessage(raw = jMessage, byteObject = False)
-        msgLenght = str(len(key)).encode()
-        self.clientSocket.sendall(msgLenght)
-        self.clientSocket.recv(2048)
-        self.clientSocket.sendall(key)
-        answer = self.clientSocket.recv(2048)
+        self.sendMessage(sock = self.clientSocket, message = key)       # Send RSA secret
+        answer = self.getMessage(sock = self.clientSocket)              # Get ACK 1
         if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
             answer = answer.decode()
             if answer == "200":
-                msgLenght = str(len(message)).encode()
-                self.clientSocket.sendall(msgLenght)
-                self.clientSocket.recv(2048)
-                self.clientSocket.sendall(message)
-                answer = self.clientSocket.recv(2048)
+                self.sendMessage(sock = self.clientSocket, message = message)       # Send AES secret
+                answer = self.getMessage(sock = self.clientSocket)                  # Get ACK 2
                 if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
                     answer = answer.decode()
                     if answer == "200":
-                        msgLenght = int(self.clientSocket.recv(1024).decode())
-                        self.clientSocket.sendall(str("200").encode())
-                        answer = self.clientSocket.recv(msgLenght)
+                        answer = self.getMessage(sock = self.clientSocket)          # Get response pt.1
                         if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
-                            RSAsecret = answer
-                            self.clientSocket.sendall(str("200").encode())
-                            msgLenght = int(self.clientSocket.recv(1024).decode())
-                            self.clientSocket.sendall(str("200").encode())
-                            answer = self.clientSocket.recv(msgLenght)
-                            print(msgLenght)
+                            RSAsecret = answer                                      # First response message is RSA secret
+                            self.sendMessage(sock = self.clientSocket, message = str("200").encode())          # Send ACK 1
+                            answer = self.getMessage(sock = self.clientSocket)      # Get response pt.2
                             if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
-                                AESsecret = answer
+                                AESsecret = answer                                  # Sencond response message is AES secret
                                 plainAnswer = self._DataRequest__decryptMessage(AESsecret = AESsecret, RSAsecret = RSAsecret, byteObject = False)
-                                self.clientSocket.sendall(str("200").encode())
-                                answer = self.clientSocket.recv(2048)
+                                self.sendMessage(sock = self.clientSocket, message = str("200").encode())      # Send ACK 2
+                                answer = self.getMessage(sock = self.clientSocket)  # Get ACK 3 (Status)
                                 if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
                                     if answer.decode() == "200":
                                         return(plainAnswer)
@@ -145,6 +134,33 @@ class DataRequest(threading.Thread):
         self.__logger.warning("An error occurred while comunicating with Data Server")
         self.__logger.info("Reason: " + error)
         return None
+
+    def sendMessage(self, sock, message):
+        message = struct.pack('>I', len(message)) + message
+        try:
+            sock.sendall(message)
+        except Exception:
+            return False
+        return True
+
+    def getMessage(self, sock):
+        # Read message length and unpack it into an integer
+        raw_msglen = self.recvall(sock, 4)
+        if not raw_msglen:
+            return None
+        msglen = struct.unpack('>I', raw_msglen)[0]
+        # Read the message data
+        return self.recvall(sock, msglen)
+    
+    def recvall(self, sock, n):
+        # Helper function to recv n bytes or return None if EOF is hit
+        data = b''
+        while len(data) < n:
+            packet = sock.recv(n - len(data))
+            if not packet:
+                return None
+            data += packet
+        return data  
 
     def insertRequest(self, request):
         if self.running == True:

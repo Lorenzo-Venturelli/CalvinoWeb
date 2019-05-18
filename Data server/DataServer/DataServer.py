@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-import threading, os, inspect, signal, logging, socket, time
+import threading, os, inspect, signal, logging, socket, time, struct
 import re, datetime, json
 import DataProxy, MQTT, SQL
 import encriptionHandler
@@ -7,6 +7,7 @@ import encriptionHandler
 startingTime = datetime.datetime.now()
 startingTime = startingTime.astimezone()
 socketBinded = True
+serverStatus = True
 safeExit = None
 
 class DataServerAccepter(threading.Thread):
@@ -139,18 +140,14 @@ class DataClient(threading.Thread):
         else:
             while self.clientConnected == True:
                 try:
-                    msgLenght = int(self.clientSocket.recv(1024).decode())
-                    self.clientSocket.sendall(str("200").encode())
-                    request = self.clientSocket.recv(msgLenght)
+                    request = self.getMessage(sock = self.clientSocket)         # Get incoming request pt.1
                     if request != None and request != 0 and request != '' and request != str.encode(''):
-                        RSAsecret = request
-                        self.clientSocket.sendall(str("200").encode())
-                        msgLenght = int(self.clientSocket.recv(1024).decode())
-                        self.clientSocket.sendall(str("200").encode())
-                        request = self.clientSocket.recv(msgLenght)
+                        RSAsecret = request                                     # First message of incoming request is the RSA secret
+                        self.sendMessage(sock = self.clientSocket, message = str("200").encode())          # Send ACK 1
+                        request = self.getMessage(sock = self.clientSocket)     #Get incoming request pt.2
                         if request != None and request != 0 and request != '' and request != str.encode(''):
-                            AESsecret = request
-                            self.clientSocket.sendall(str("200").encode())
+                            AESsecret = request                                 # Sencond message of incoming request is the AES secret
+                            self.sendMessage(sock = self.clientSocket, message = str("200").encode())      # Send ACK2
                         else:
                             self.disconnect()
                             continue
@@ -160,8 +157,9 @@ class DataClient(threading.Thread):
                 except ConnectionResetError:
                     self.disconnect()
                     continue
-                except Exception:
+                except Exception as test:
                     self.logger.error("Error: Unknown comunication error occurred with client " + str(self.address[0]))
+                    self.logger.info(str(test))
                     continue
 
                 request = self._DataClient__decryptMessage(AESsecret = AESsecret, RSAsecret = RSAsecret)
@@ -170,7 +168,6 @@ class DataClient(threading.Thread):
                 except json.JSONDecodeError:
                     self.logger.warning("Error: Received corrupted request from host " + str(self.address[0]))
                     continue
-
                 if "SN" in request.keys() and "DT" in request.keys() and "FT" in request.keys() and "LT" in request.keys():
                     if request["SN"] != None and request["DT"] != None and request["FT"] != None and request["LT"] != None:     
                         result = self.dataProxy.requestData(sensorNumber = request["SN"], dataType = request["DT"], firstTime = request["FT"], lastTime = request["LT"])
@@ -195,22 +192,15 @@ class DataClient(threading.Thread):
                 (resultJSON, key) = self._DataClient__generateEncryptedMessage(raw = resultJSON)
                 
                 try:
-                    msgLenght = str(len(key)).encode()
-                    self.clientSocket.sendall(msgLenght)
-                    self.clientSocket.recv(1024)
-                    self.clientSocket.sendall(key)
-                    answer = self.clientSocket.recv(2048)
+                    self.sendMessage(sock = self.clientSocket, message = key)                   # Send RSA secret
+                    answer = self.getMessage(sock = self.clientSocket)                          # Get ACK 1
                     if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
                         if answer.decode() == "200":
-                            self.logger.info(len(resultJSON))
-                            msgLenght = str(len(resultJSON)).encode()
-                            self.clientSocket.sendall(msgLenght)
-                            self.clientSocket.recv(1024)
-                            self.clientSocket.sendall(resultJSON)
-                            answer = self.clientSocket.recv(2048)
+                            self.sendMessage(sock = self.clientSocket, message = resultJSON)    # Send AES secret
+                            answer = self.getMessage(sock = self.clientSocket)                  # Get ACK 2
                             if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
                                 if answer.decode() == "200":
-                                    self.clientSocket.sendall(status)
+                                    self.sendMessage(sock = self.clientSocket, message = status)    # Send ACK 3 (status)
                                 else:
                                     self.disconnect()
                                     continue
@@ -232,6 +222,34 @@ class DataClient(threading.Thread):
         
         self.logger.info("Client " + str(self.address[0]) + " disconnected")
         return
+    
+    def sendMessage(self, sock, message):
+        message = struct.pack('>I', len(message)) + message
+        try:
+            sock.sendall(message)
+        except Exception:
+            return False
+        return True
+
+    def getMessage(self, sock):
+        # Read message length and unpack it into an integer
+        raw_msglen = self.recvall(sock, 4)
+        if not raw_msglen:
+            return None
+        msglen = struct.unpack('>I', raw_msglen)[0]
+        # Read the message data
+        return self.recvall(sock, msglen)
+    
+    def recvall(self, sock, n):
+        # Helper function to recv n bytes or return None if EOF is hit
+        data = b''
+        while len(data) < n:
+            packet = sock.recv(n - len(data))
+            if not packet:
+                return None
+            data += packet
+        return data   
+        
 
 class shutdownHandler():
     def __init__(self, mqttHandler, dataProxyHandler, dataServerListener, startingTime):
@@ -241,34 +259,46 @@ class shutdownHandler():
         self.startingTime = startingTime
 
     def shutdown(self):
+        global serverStatus
+
         self.mqttHandler.stop()
         self.dataServerListener.stop()
         self.mqttHandler.join()
         self.dataServerListener.join()
+        serverStatus = False
         optimizeSQL(dataProxy = dataProxyHandler, reason = True, firstTime = startingTime)
         return
 
 def optimizeSQL(dataProxy, reason, firstTime = None):
-    if reason == True:
-        if firstTime != None:
-            lastTime = firstTime + datetime.timedelta(hours = +1)
-        else:
-            return False
+    global serverStatus
+    if serverStatus == True:
+        while serverStatus == True:
+            time.sleep(3600)
+            lastTime = datetime.datetime.now()
+            firstTime = lastTime + datetime.timedelta(hours = -1)
+            result = dataProxy.summarizeData(firstTime = firstTime, lastTime = lastTime)
+            logging.info(result)
+            startingTime = datetime.datetime.now()
     else:
-        firstTime = datetime.datetime.now()
-        firstTime = firstTime + datetime.timedelta(hours = -1)
-        lastTime = firstTime
+        if reason == True:
+            if firstTime != None:
+                lastTime = firstTime + datetime.timedelta(hours = +1)
+            else:
+                return False
+        else:
+            firstTime = datetime.datetime.now()
+            firstTime = firstTime + datetime.timedelta(hours = -1)
+            lastTime = firstTime
 
-    result = dataProxy.summarizeData(firstTime = firstTime, lastTime = lastTime)
-    if result == True and reason == True:
-        firstTime = firstTime + datetime.timedelta(hours = +1)
-        lastTime = lastTime + datetime.timedelta(hours = +1)
         result = dataProxy.summarizeData(firstTime = firstTime, lastTime = lastTime)
+        if result == True and reason == True:
+            firstTime = firstTime + datetime.timedelta(hours = +1)
+            lastTime = lastTime + datetime.timedelta(hours = +1)
+            result = dataProxy.summarizeData(firstTime = firstTime, lastTime = lastTime)
 
-    startingTime = datetime.datetime.now()
-    startingTime = startingTime.astimezone()
-    return result
-
+        startingTime = datetime.datetime.now()
+       
+    
 def sysStop(signum, frame):
     safeExit.shutdown()
     quit()
@@ -388,11 +418,16 @@ if __name__ == "__main__":
         dataServerListener.start()
         safeExit = shutdownHandler(mqttHandler = mqttHandler, dataProxyHandler = dataProxyHandler, dataServerListener = dataServerListener, startingTime = startingTime)
         signal.signal(signal.SIGTERM, sysStop)
+        try:
+            optimizeThread = threading.Thread(target = optimizeSQL, args = (dataProxyHandler, False))
+            optimizeThread.daemon = True
+            optimizeThread.start()
+        except Exception as reason:
+            logger.error("Unable to create opt thread because " + str(reason))
 
         try:
             while True:
                 time.sleep(3600)
-                optimizeSQL(dataProxy = dataProxyHandler, reason = False)
         except KeyboardInterrupt:
             safeExit.shutdown()
             logger.info("Server stopped because of user")

@@ -87,25 +87,28 @@ class CalvinoDB():
             elif many == False:
                 status = (False, 3)
             else:
-                rowNumber = 0
-                mediumValue = 0
-                for record in many:
-                    rowNumber += 1
-                    mediumValue = mediumValue + float(many[record][2])
-                if rowNumber != 0:
-                    mediumValue = mediumValue / rowNumber
-                    mediumValue = round(number = mediumValue, ndigits = 2)
-                    result = self.remove(sensorNumber = sensorNumber, dataType = dataType, firstTime = firstTime, lastTime = lastTime)
-                    if result == False:
-                        status = (False, 4)
-                    else:
-                        result = self.insert(sensorNumber = sensorNumber, dataType = dataType, value = mediumValue, timestamp = firstTime)
+                try:
+                    rowNumber = 0
+                    mediumValue = 0
+                    for record in many:
+                        rowNumber += 1
+                        mediumValue = mediumValue + float(many[record][2])
+                    if rowNumber != 0:
+                        mediumValue = mediumValue / rowNumber
+                        mediumValue = round(number = mediumValue, ndigits = 2)
+                        result = self.remove(sensorNumber = sensorNumber, dataType = dataType, firstTime = firstTime, lastTime = lastTime)
                         if result == False:
-                            status = (False, 5)
+                            status = (False, 4)
                         else:
-                            status = (True, 0)
-                else:
-                    status = (True, 0)
+                            result = self.insert(sensorNumber = sensorNumber, dataType = dataType, value = mediumValue, timestamp = firstTime)
+                            if result == False:
+                                status = (False, 5)
+                            else:
+                                status = (True, 0)
+                    else:
+                        status = (True, 0)
+                except Exception as reason:
+                    self.__logger.error("Error in summarization: " + str(reason))
         return status
 
     def notifySummarization(self, state):

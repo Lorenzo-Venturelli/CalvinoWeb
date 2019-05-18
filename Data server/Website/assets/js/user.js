@@ -121,7 +121,7 @@ ws.addEventListener("message", function (message){
         }
     }
     else if (receivedData["type"] == "gr"){
-        console.log(receivedData);
+        
     }
 });
 

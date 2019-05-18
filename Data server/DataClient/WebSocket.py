@@ -12,17 +12,20 @@ class MainHandler(web.RequestHandler):
 
 class WsHandler(websocket.WebSocketHandler):
 	def open(self):
-		self.__logger = logging.getLogger(name = "Tornado")
-		self.currentRTsensorNumber = 1
-		try:	
-			self.RTscheduler = ioloop.PeriodicCallback(self.periodicRTupdate, callback_time = 15000)
-			self.RTscheduler.start()
-			self.__logger.info("Client " + str(self.request.remote_ip) + " connected")
-		except Exception as reason:
-			self.__logger.error("Errors occurred while creating scheduler for client " + str(self.request.remote_ip))
-			self.__logger.info("Reason: " + str(reason))
+		if serverStatus == True:
+			self.__logger = logging.getLogger(name = "Tornado")
+			self.currentRTsensorNumber = 1
+			try:	
+				self.RTscheduler = ioloop.PeriodicCallback(self.periodicRTupdate, callback_time = 15000)
+				self.RTscheduler.start()
+				self.__logger.info("Client " + str(self.request.remote_ip) + " connected")
+			except Exception as reason:
+				self.__logger.error("Errors occurred while creating scheduler for client " + str(self.request.remote_ip))
+				self.__logger.info("Reason: " + str(reason))
 
-		self.sendRTdata(sensorNumber = self.currentRTsensorNumber)
+			self.sendRTdata(sensorNumber = self.currentRTsensorNumber)
+		else:
+			self.close()
 
 
 	def periodicRTupdate(self):
@@ -47,7 +50,8 @@ class WsHandler(websocket.WebSocketHandler):
 	def __sendGdata(self, sensorNumber, dataType, firstTime, lastTime):
 		
 		obtainedData = self.__requestData(sensorNumber = sensorNumber, dataType = dataType, dataTime = (lastTime, firstTime))
-		obtainedData = self.__parseGdata(data = obtainedData)
+		obtainedData = self.__parseGdata(data = ast.literal_eval(obtainedData))
+		
 		if type(obtainedData) == dict:
 			gResponse = {"type" : "gr", "values" : obtainedData}
 			gResponse = json.dumps(gResponse)
@@ -84,7 +88,7 @@ class WsHandler(websocket.WebSocketHandler):
 				if data[item][1] in parsedData:
 					parsedData[data[item][1]] = round(((data[item][2] + parsedData[data[item][1]]) / 2), 1)
 				else:
-					parsedData[data[item[1]]] = data[item][2]
+					parsedData[data[item][1]] = data[item][2]
 			return parsedData
 		else:
 			return False
@@ -154,7 +158,7 @@ class frontEndHandler(threading.Thread):
 				self.ioLoop = ioloop.IOLoop.instance()
 				serverStatus = True
 				self.ioLoop.start()
-				self.ioLoop.close()
+				#self.ioLoop.close()
 			except Exception as reason:
 				self.__logger.critical("Unable to create Tornado IO Loop")
 				self.__logger.info("Reason: " + str(reason))
