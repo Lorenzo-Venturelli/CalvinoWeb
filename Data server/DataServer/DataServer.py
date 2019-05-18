@@ -139,11 +139,15 @@ class DataClient(threading.Thread):
         else:
             while self.clientConnected == True:
                 try:
-                    request = self.clientSocket.recv(2048)
+                    msgLenght = int(self.clientSocket.recv(1024).decode())
+                    self.clientSocket.sendall(str("200").encode())
+                    request = self.clientSocket.recv(msgLenght)
                     if request != None and request != 0 and request != '' and request != str.encode(''):
                         RSAsecret = request
                         self.clientSocket.sendall(str("200").encode())
-                        request = self.clientSocket.recv(2048)
+                        msgLenght = int(self.clientSocket.recv(1024).decode())
+                        self.clientSocket.sendall(str("200").encode())
+                        request = self.clientSocket.recv(msgLenght)
                         if request != None and request != 0 and request != '' and request != str.encode(''):
                             AESsecret = request
                             self.clientSocket.sendall(str("200").encode())
@@ -191,10 +195,17 @@ class DataClient(threading.Thread):
                 (resultJSON, key) = self._DataClient__generateEncryptedMessage(raw = resultJSON)
                 
                 try:
+                    msgLenght = str(len(key)).encode()
+                    self.clientSocket.sendall(msgLenght)
+                    self.clientSocket.recv(1024)
                     self.clientSocket.sendall(key)
                     answer = self.clientSocket.recv(2048)
                     if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
                         if answer.decode() == "200":
+                            self.logger.info(len(resultJSON))
+                            msgLenght = str(len(resultJSON)).encode()
+                            self.clientSocket.sendall(msgLenght)
+                            self.clientSocket.recv(1024)
                             self.clientSocket.sendall(resultJSON)
                             answer = self.clientSocket.recv(2048)
                             if answer != None and answer != 0 and answer != '' and answer != str.encode(''):

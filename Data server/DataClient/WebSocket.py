@@ -1,5 +1,5 @@
 from tornado import ioloop, web, websocket, gen
-from apscheduler.schedulers.tornado import TornadoScheduler
+
 import time, threading, datetime, json, logging, ast
 import DataClient
 
@@ -29,25 +29,32 @@ class WsHandler(websocket.WebSocketHandler):
 		self.sendRTdata(sensorNumber = self.currentRTsensorNumber)
 
 	def sendRTdata(self, sensorNumber):
-		print(sensorNumber)
 		dataTime = (str(datetime.datetime.now())[:-7], str(datetime.datetime.now() + datetime.timedelta(minutes = -1))[:-7])
-		temp = self.requestRTdata(sensorNumber, 'temperatura', dataTime)
-		light = self.requestRTdata(sensorNumber, 'luce', dataTime)
-		pressure = self.requestRTdata(sensorNumber, 'pressione', dataTime)
-		highness = self.requestRTdata(sensorNumber, 'altitudine', dataTime)
-		temp = self.__parseData(data = ast.literal_eval(temp))
-		light = self.__parseData(data = ast.literal_eval(light))
-		pressure = self.__parseData(data = ast.literal_eval(pressure))
-		highness = self.__parseData(data = ast.literal_eval(highness))
+		temp = self.__requestData(sensorNumber, 'temperatura', dataTime)
+		light = self.__requestData(sensorNumber, 'luce', dataTime)
+		pressure = self.__requestData(sensorNumber, 'pressione', dataTime)
+		highness = self.__requestData(sensorNumber, 'altitudine', dataTime)
+		temp = self.__parseRTData(data = ast.literal_eval(temp))
+		light = self.__parseRTData(data = ast.literal_eval(light))
+		pressure = self.__parseRTData(data = ast.literal_eval(pressure))
+		highness = self.__parseRTData(data = ast.literal_eval(highness))
 
 		rtResponse = {"type" : "rtd", "temp" : temp, "light" : light, "pressure" : pressure, "highness" : highness}
-		print(rtResponse)
 		rtResponse = json.dumps(rtResponse)
 		self.write_message(rtResponse)
-		print(str({"type" : "rtd", "temp" : temp, "light" : light, "pressure" : pressure, "highness" : highness}))
 		return
 
-	def requestRTdata(self, sensorNumber, dataType, dataTime):
+	def __sendGdata(self, sensorNumber, dataType, firstTime, lastTime):
+		
+		obtainedData = self.__requestData(sensorNumber = sensorNumber, dataType = dataType, dataTime = (lastTime, firstTime))
+		obtainedData = self.__parseGdata(data = obtainedData)
+		if type(obtainedData) == dict:
+			gResponse = {"type" : "gr", "values" : obtainedData}
+			gResponse = json.dumps(gResponse)
+			self.write_message(gResponse)
+	
+	def __requestData(self, sensorNumber, dataType, dataTime):
+		print(str(sensorNumber) + " " + str(dataType) + " " + str(dataTime) )
 		request = {"SN": sensorNumber ,"DT": dataType,"FT": dataTime[1], "LT": dataTime[0]}
 		if dataClient.insertRequest(request) == True:
 			response = dataClient.getResponse()	
@@ -55,7 +62,7 @@ class WsHandler(websocket.WebSocketHandler):
 		else:
 			return False
 
-	def __parseData(self, data):
+	def __parseRTData(self, data):
 		if type(data) == dict:
 			valueNumber = 0
 			value = 0
@@ -67,6 +74,18 @@ class WsHandler(websocket.WebSocketHandler):
 				return round(value, 1)
 			else:
 				return False
+		else:
+			return False
+
+	def __parseGdata(self, data):
+		if type(data) == dict:
+			parsedData = dict()
+			for item in data.keys():
+				if data[item][1] in parsedData:
+					parsedData[data[item][1]] = round(((data[item][2] + parsedData[data[item][1]]) / 2), 1)
+				else:
+					parsedData[data[item[1]]] = data[item][2]
+			return parsedData
 		else:
 			return False
 
@@ -88,10 +107,10 @@ class WsHandler(websocket.WebSocketHandler):
 				self.currentRTsensorNumber = int(parsedMessage["realTimeSN"])
 				self.sendRTdata(sensorNumber = self.currentRTsensorNumber)
 			elif "grapRequest" in parsedMessage.keys():
-				sensorNumber = parsedMessage["grapRequest"]["SN"]
-				dataType = parsedMessage["grapRequest"]["DT"]
-				firstTime = parsedMessage["grapRequest"]["FT"]
-				lastTime = parsedMessage["grapRequest"]["LT"]
+				self.__sendGdata(sensorNumber = int(parsedMessage["grapRequest"]["SN"]), 
+					dataType = parsedMessage["grapRequest"]["DT"], 
+					firstTime = parsedMessage["grapRequest"]["FT"], 
+					lastTime = parsedMessage["grapRequest"]["LT"])
 			else:
 				print("No vecchio no")
 

@@ -91,21 +91,32 @@ class DataRequest(threading.Thread):
         error = None
         jMessage = json.dumps(message)
         (message, key) = self._DataRequest__generateEncryptedMessage(raw = jMessage, byteObject = False)
+        msgLenght = str(len(key)).encode()
+        self.clientSocket.sendall(msgLenght)
+        self.clientSocket.recv(2048)
         self.clientSocket.sendall(key)
         answer = self.clientSocket.recv(2048)
         if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
             answer = answer.decode()
             if answer == "200":
+                msgLenght = str(len(message)).encode()
+                self.clientSocket.sendall(msgLenght)
+                self.clientSocket.recv(2048)
                 self.clientSocket.sendall(message)
                 answer = self.clientSocket.recv(2048)
                 if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
                     answer = answer.decode()
                     if answer == "200":
-                        answer = self.clientSocket.recv(2048)
+                        msgLenght = int(self.clientSocket.recv(1024).decode())
+                        self.clientSocket.sendall(str("200").encode())
+                        answer = self.clientSocket.recv(msgLenght)
                         if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
                             RSAsecret = answer
                             self.clientSocket.sendall(str("200").encode())
-                            answer = self.clientSocket.recv(2048)
+                            msgLenght = int(self.clientSocket.recv(1024).decode())
+                            self.clientSocket.sendall(str("200").encode())
+                            answer = self.clientSocket.recv(msgLenght)
+                            print(msgLenght)
                             if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
                                 AESsecret = answer
                                 plainAnswer = self._DataRequest__decryptMessage(AESsecret = AESsecret, RSAsecret = RSAsecret, byteObject = False)
@@ -123,11 +134,11 @@ class DataRequest(threading.Thread):
                         else:
                             error = "Failed reciving RSA secret"
                     else:
-                         error = "Failed ACK 2 - Got " + str(answer.decode())
+                         error = "Failed ACK 2 - Got " + str(answer)
                 else:
                     error = "Failed ACK 2 - Got anything"
             else:
-                error = "Failed ACK 1 - Got " + str(answer.decode())
+                error = "Failed ACK 1 - Got " + str(answer)
         else:
             error = "Failed ACK 1 - Got anything"
 

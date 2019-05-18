@@ -41,9 +41,9 @@ function RTupdate(temp, light, pressure, highness){
 
 function GDrequest(){
     var x = document.getElementById("GSN");
-    var sensorNumber = x.options[x.selectedIndex].text;
+    var sensorNumber = x.options[x.selectedIndex].value;
     x = document.getElementById("GDT");
-    var dataType = x.options[x.selectedIndex].text;
+    var dataType = x.options[x.selectedIndex].value;
     var Fdata = document.getElementById("GFTD").value;
     var Ldata = document.getElementById("GLTD").value;
     var Ftime = document.getElementById("GFTT").value;
@@ -110,6 +110,7 @@ function buildGraph(){
 
 ws.addEventListener("message", function (message){
     var receivedData = JSON.parse(message.data)
+    console.log(receivedData);
     if (receivedData["type"] == "rtd"){
         RTupdate(receivedData["temp"], receivedData["light"], receivedData["pressure"], receivedData["highness"]);
     }
@@ -118,6 +119,9 @@ ws.addEventListener("message", function (message){
             clearInterval(pingInterval);
             ws.close();
         }
+    }
+    else if (receivedData["type"] == "gr"){
+        console.log(receivedData);
     }
 });
 
