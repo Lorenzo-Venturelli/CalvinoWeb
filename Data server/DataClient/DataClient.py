@@ -66,7 +66,7 @@ class DataRequest(threading.Thread):
         try:
             self.clientSocket.connect((self.serverAddress, self.serverPort))
         except Exception:
-            self.__logger.critical("Unable to connect to  Data Server")
+            self.__logger.critical("Unable to connect to Data Server")
             self.disconnect()
 
         if self.running == True:
@@ -79,7 +79,17 @@ class DataRequest(threading.Thread):
             message = self.reaquestQueue.get()
             if message == False:
                 continue
-            result = self.__executeRequest(message = message)
+            try:
+                result = self.__executeRequest(message = message)
+            except ConnectionResetError:
+                self.__logger.info("Connection with Data Server has been interrupted")
+                self.disconnect()
+            except ConnectionAbortedError:
+                self.__logger.info("Connection with Data Server has been interrupted")
+                self.disconnect()
+            except ConnectionError:
+                self.__logger.info("Connection with Data Server has been interrupted")
+                self.disconnect()
             if result == None:
                 self.responseQueue.put(False)
             else:
@@ -139,6 +149,12 @@ class DataRequest(threading.Thread):
         message = struct.pack('>I', len(message)) + message
         try:
             sock.sendall(message)
+        except ConnectionResetError:
+            raise ConnectionResetError
+        except ConnectionAbortedError:
+            raise ConnectionAbortedError
+        except ConnectionError:
+            raise ConnectionError
         except Exception:
             return False
         return True
@@ -153,13 +169,20 @@ class DataRequest(threading.Thread):
         return self.recvall(sock, msglen)
     
     def recvall(self, sock, n):
+        try:
         # Helper function to recv n bytes or return None if EOF is hit
-        data = b''
-        while len(data) < n:
-            packet = sock.recv(n - len(data))
-            if not packet:
-                return None
-            data += packet
+            data = b''
+            while len(data) < n:
+                packet = sock.recv(n - len(data))
+                if not packet:
+                    return None
+                data += packet
+        except ConnectionResetError:
+            raise ConnectionResetError
+        except ConnectionAbortedError:
+            raise ConnectionAbortedError
+        except ConnectionError:
+            raise ConnectionError
         return data  
 
     def insertRequest(self, request):

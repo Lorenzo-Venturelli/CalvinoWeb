@@ -1,5 +1,4 @@
 from tornado import ioloop, web, websocket, gen
-
 import time, threading, datetime, json, logging, ast
 import DataClient
 
@@ -123,7 +122,7 @@ class WsHandler(websocket.WebSocketHandler):
 		self.__logger.info("Client " + str(self.request.remote_ip) + " disconnected")
 
 class frontEndHandler(threading.Thread):
-	def __init__(self, tornadoAddress, tornadoPort, dataClientHandler, syncEvent, loggingFile):
+	def __init__(self, tornadoAddress, tornadoPort, dataClientHandler, syncEvent, loggingFile, websitePath):
 		global dataClient
 
 		self.tornadoPort = int(tornadoPort)
@@ -132,6 +131,7 @@ class frontEndHandler(threading.Thread):
 		self.syncEvent = syncEvent
 		self.running = True
 		self.ioLoop = None
+		self.__websitePath = websitePath
 		self.__logger = logging.getLogger(name = "Tornado")
 		logging.basicConfig(filename = loggingFile, level = logging.INFO)
 		threading.Thread.__init__(self, name = "Tornado thread", daemon = False)
@@ -143,8 +143,8 @@ class frontEndHandler(threading.Thread):
 			ioLoop = ioloop.IOLoop()
 			ioLoop.make_current()
 			webApp = web.Application([(r"/", MainHandler), (r"/ws", WsHandler),
-			(r"/assets/(.*)", web.StaticFileHandler, {"path":"../Website/assets"}),
-			(r"/images/(.*)", web.StaticFileHandler, {"path":"../Website/images"})])
+			(r"/assets/(.*)", web.StaticFileHandler, {"path":self.__websitePath + "/assets"}),
+			(r"/images/(.*)", web.StaticFileHandler, {"path":self.__websitePath + "/images"})])
 			webApp.listen(port = self.tornadoPort, address = self.tornadoAddress)
 		except Exception as reason:
 			self.__logger.critical("Unable to create Tornado application")
@@ -158,7 +158,6 @@ class frontEndHandler(threading.Thread):
 				self.ioLoop = ioloop.IOLoop.instance()
 				serverStatus = True
 				self.ioLoop.start()
-				#self.ioLoop.close()
 			except Exception as reason:
 				self.__logger.critical("Unable to create Tornado IO Loop")
 				self.__logger.info("Reason: " + str(reason))

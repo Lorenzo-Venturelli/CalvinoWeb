@@ -21,6 +21,7 @@ def sysStop(signum, frame):
 if __name__ == "__main__":
     filesPath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))   # Get absolute path of files
     match = re.match(pattern = r"([A-z \/]+)(\/[A-z]+)", string = str(filesPath))
+    websitePath = match.group(1) + "/Website"
     filesPath = match.group(1) + "/Files"
     logger = logging.getLogger(name = "Middle Server")
 
@@ -74,7 +75,7 @@ if __name__ == "__main__":
     dataClientSyncEvent.wait()
     dataClientSyncEvent.clear()
     if dataClient.running == True:
-        tornadoHandler = WebSocket.frontEndHandler(tornadoAddress = middleServerAddress, tornadoPort = middleServerPort, dataClientHandler = dataClient, syncEvent = tornadoSyncEvent, loggingFile = loggingFile)
+        tornadoHandler = WebSocket.frontEndHandler(tornadoAddress = middleServerAddress, tornadoPort = middleServerPort, dataClientHandler = dataClient, syncEvent = tornadoSyncEvent, loggingFile = loggingFile, websitePath = websitePath)
         tornadoHandler.start()
         tornadoSyncEvent.wait()
         tornadoSyncEvent.clear()

@@ -155,7 +155,13 @@ class DataClient(threading.Thread):
                         self.disconnect()
                         continue
                 except ConnectionResetError:
-                    self.disconnect()
+                    self.clientSocket.disconnect()
+                    continue
+                except ConnectionAbortedError:
+                    self.clientSocket.disconnect()
+                    continue
+                except ConnectionError:
+                    self.clientSocket.disconnect()
                     continue
                 except Exception as test:
                     self.logger.error("Error: Unknown comunication error occurred with client " + str(self.address[0]))
@@ -214,7 +220,13 @@ class DataClient(threading.Thread):
                         self.disconnect()
                         continue
                 except ConnectionResetError:
-                    self.disconnect()
+                    self.clientSocket.disconnect()
+                    continue
+                except ConnectionAbortedError:
+                    self.clientSocket.disconnect()
+                    continue
+                except ConnectionError:
+                    self.clientSocket.disconnect()
                     continue
                 except Exception:
                     self.logger.warning("Error: Unknown comunication error occurred with client " + str(self.address[0]))
@@ -227,27 +239,47 @@ class DataClient(threading.Thread):
         message = struct.pack('>I', len(message)) + message
         try:
             sock.sendall(message)
+        except ConnectionResetError:
+            raise ConnectionResetError
+        except ConnectionAbortedError:
+            raise ConnectionAbortedError
+        except ConnectionError:
+            raise ConnectionError
         except Exception:
             return False
         return True
 
     def getMessage(self, sock):
-        # Read message length and unpack it into an integer
-        raw_msglen = self.recvall(sock, 4)
-        if not raw_msglen:
-            return None
-        msglen = struct.unpack('>I', raw_msglen)[0]
-        # Read the message data
-        return self.recvall(sock, msglen)
+        try:
+            # Read message length and unpack it into an integer
+            raw_msglen = self.recvall(sock, 4)
+            if not raw_msglen:
+                return None
+            msglen = struct.unpack('>I', raw_msglen)[0]
+            # Read the message data
+            return self.recvall(sock, msglen)
+        except ConnectionResetError:
+            raise ConnectionResetError
+        except ConnectionAbortedError:
+            raise ConnectionAbortedError
+        except ConnectionError:
+            raise ConnectionError
     
     def recvall(self, sock, n):
         # Helper function to recv n bytes or return None if EOF is hit
         data = b''
         while len(data) < n:
-            packet = sock.recv(n - len(data))
-            if not packet:
-                return None
-            data += packet
+            try:
+                packet = sock.recv(n - len(data))
+                if not packet:
+                    return None
+                data += packet
+            except ConnectionResetError:
+                raise ConnectionResetError
+            except ConnectionAbortedError:
+                raise ConnectionAbortedError
+            except ConnectionError:
+                raise ConnectionError
         return data   
         
 
@@ -271,13 +303,12 @@ class shutdownHandler():
 
 def optimizeSQL(dataProxy, reason, firstTime = None):
     global serverStatus
-    if serverStatus == True:
+    if serverStatus == True and reason == False:
         while serverStatus == True:
             time.sleep(3600)
             lastTime = datetime.datetime.now()
             firstTime = lastTime + datetime.timedelta(hours = -1)
             result = dataProxy.summarizeData(firstTime = firstTime, lastTime = lastTime)
-            logging.info(result)
             startingTime = datetime.datetime.now()
     else:
         if reason == True:
