@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 import threading, os, inspect, signal, logging, socket, time, struct
 import re, datetime, json
+from apscheduler.schedulers.background import BackgroundScheduler
 import DataProxy, MQTT, SQL
 import encriptionHandler
 
 startingTime = datetime.datetime.now()
 startingTime = startingTime.astimezone()
 socketBinded = True
-serverStatus = True
 safeExit = None
 
 class DataServerAccepter(threading.Thread):
@@ -291,45 +291,22 @@ class shutdownHandler():
         self.startingTime = startingTime
 
     def shutdown(self):
-        global serverStatus
-
         self.mqttHandler.stop()
         self.dataServerListener.stop()
         self.mqttHandler.join()
         self.dataServerListener.join()
-        serverStatus = False
-        optimizeSQL(dataProxy = dataProxyHandler, reason = True, firstTime = startingTime)
+        optimizeSQL(dataProxy = dataProxyHandler, reason = True)
         return
 
-def optimizeSQL(dataProxy, reason, firstTime = None):
-    global serverStatus
-    if serverStatus == True and reason == False:
-        while serverStatus == True:
-            time.sleep(3600)
-            lastTime = datetime.datetime.now()
-            firstTime = lastTime + datetime.timedelta(hours = -1)
-            result = dataProxy.summarizeData(firstTime = firstTime, lastTime = lastTime)
-            startingTime = datetime.datetime.now()
-    else:
-        if reason == True:
-            if firstTime != None:
-                lastTime = firstTime + datetime.timedelta(hours = +1)
-            else:
-                return False
-        else:
-            firstTime = datetime.datetime.now()
-            firstTime = firstTime + datetime.timedelta(hours = -1)
-            lastTime = firstTime
+def optimizeSQL(dataProxy, reason):
+    firstTime = datetime.datetime.now() + datetime.timedelta(hours = -1)
+    lastTime = firstTime + datetime.timedelta(hours = +1)
+    dataProxy.summarizeData(firstTime = firstTime, lastTime = lastTime, skipCheck = False)
+    if reason == True:
+        firstTime = firstTime + datetime.timedelta(hours = +1)
+        lastTime = lastTime + datetime.timedelta(hours = +1)
+        dataProxy.summarizeData(firstTime = firstTime, lastTime = lastTime, skipCheck = False)
 
-        result = dataProxy.summarizeData(firstTime = firstTime, lastTime = lastTime)
-        if result == True and reason == True:
-            firstTime = firstTime + datetime.timedelta(hours = +1)
-            lastTime = lastTime + datetime.timedelta(hours = +1)
-            result = dataProxy.summarizeData(firstTime = firstTime, lastTime = lastTime)
-
-        startingTime = datetime.datetime.now()
-       
-    
 def sysStop(signum, frame):
     safeExit.shutdown()
     quit()
@@ -449,12 +426,10 @@ if __name__ == "__main__":
         dataServerListener.start()
         safeExit = shutdownHandler(mqttHandler = mqttHandler, dataProxyHandler = dataProxyHandler, dataServerListener = dataServerListener, startingTime = startingTime)
         signal.signal(signal.SIGTERM, sysStop)
-        try:
-            optimizeThread = threading.Thread(target = optimizeSQL, args = (dataProxyHandler, False))
-            optimizeThread.daemon = True
-            optimizeThread.start()
-        except Exception as reason:
-            logger.error("Unable to create opt thread because " + str(reason))
+        scheduler = BackgroundScheduler()
+        scheduler.start()
+        optimizingJob = scheduler.add_job(optimizeSQL, "interval", (dataProxyHandler, False), "OpzJob", "Optimize SQL routine", seconds = 5)
+        print(optimizingJob)
 
         try:
             while True:
