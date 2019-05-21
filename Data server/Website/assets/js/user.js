@@ -27,7 +27,7 @@ function RTsetSensor(){
         currentRTSN = value;
         sendRTupdate(value);
     }
-    
+
     return;
 }
 
@@ -76,12 +76,14 @@ function pingServer(){
 }
 
 function buildGraph(){
+    var ctx = document.getElementById('graph').getContext('2d');
+    //ctx.style.backgroundColor = 'rgba(255,0,0,255)';
     var datas = [];
     var labels = []
     var dataType = "Temperatura in °C"
     var minValue = Math.min(...datas) - 2;
 
-
+//rgb(160, 160, 160)
     var chart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -97,12 +99,24 @@ function buildGraph(){
             },
         options: {
             scales: {
-                yAxes: [{
-                    ticks: {
-                        beginAtZero: false,
-                        min : minValue
-                    }
-                }]
+              yAxes: [{
+                gridLines: {
+                    color: "#636363"
+                },
+                ticks: {
+                  fontColor: "#636363",
+                  beginAtZero: false,
+                  min : minValue
+                }
+              }],
+              xAxes: [{
+                gridLines: {
+                    color: "#636363"
+                },
+                ticks: {
+                  fontColor: "#636363",
+                }
+              }]
             }
         }
     });
@@ -121,7 +135,7 @@ ws.addEventListener("message", function (message){
         }
     }
     else if (receivedData["type"] == "gr"){
-        
+
     }
 });
 
