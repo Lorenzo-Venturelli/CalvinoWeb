@@ -1,12 +1,14 @@
 #!/usr/bin/python3
-import threading, os, inspect, signal, logging, socket, time, struct
-import re, datetime, json
-from apscheduler.schedulers.background import BackgroundScheduler
-import DataProxy, MQTT, SQL
-import encriptionHandler
+try:
+    import threading, os, inspect, signal, logging, socket, time, struct
+    import re, datetime, json
+    from apscheduler.schedulers.background import BackgroundScheduler
+    import DataProxy, MQTT, SQL
+    import encriptionHandler
+except ImportError as missingImport:
+    print("Critical Error: " + str(missingImport))
+    quit()
 
-startingTime = datetime.datetime.now()
-startingTime = startingTime.astimezone()
 socketBinded = True
 safeExit = None
 
@@ -282,30 +284,41 @@ class DataClient(threading.Thread):
                 raise ConnectionError
         return data   
         
-
 class shutdownHandler():
-    def __init__(self, mqttHandler, dataProxyHandler, dataServerListener, startingTime):
+    def __init__(self, mqttHandler, dataProxyHandler, dataServerListener):
         self.mqttHandler = mqttHandler
         self.dataProxyHandler = dataProxyHandler
         self.dataServerListener = dataServerListener
-        self.startingTime = startingTime
+        self.serverRunning = True
+        self.optimizingThread = None
 
     def shutdown(self):
+        self.serverRunning = False
+        self.optimizingThread.cancel()
         self.mqttHandler.stop()
         self.dataServerListener.stop()
         self.mqttHandler.join()
         self.dataServerListener.join()
-        optimizeSQL(dataProxy = dataProxyHandler, reason = True)
+        self.optimizeSQL(dataProxy = dataProxyHandler, reason = True)
         return
 
-def optimizeSQL(dataProxy, reason):
-    firstTime = datetime.datetime.now() + datetime.timedelta(hours = -1)
-    lastTime = firstTime + datetime.timedelta(hours = +1)
-    dataProxy.summarizeData(firstTime = firstTime, lastTime = lastTime, skipCheck = False)
-    if reason == True:
-        firstTime = firstTime + datetime.timedelta(hours = +1)
-        lastTime = lastTime + datetime.timedelta(hours = +1)
-        dataProxy.summarizeData(firstTime = firstTime, lastTime = lastTime, skipCheck = False)
+    def optimizeSQL(self, dataProxy, reason):
+        try:
+            firstTime = datetime.datetime.now() + datetime.timedelta(hours = -1)
+            lastTime = firstTime + datetime.timedelta(hours = +1)
+            logging.info("Ci siamo ")
+            dataProxy.summarizeData(firstTime = firstTime, lastTime = lastTime, skipCheck = False)
+            logging.info("Ci siamo 2 volte")
+            if reason == True:
+                firstTime = firstTime + datetime.timedelta(hours = +1)
+                lastTime = lastTime + datetime.timedelta(hours = +1)
+                dataProxy.summarizeData(firstTime = firstTime, lastTime = lastTime, skipCheck = False)
+            
+            if self.serverRunning == True:
+                self.optimizingThread = threading.Timer(interval = 3600, function = self.optimizeSQL, args = [dataProxyHandler, False])
+                self.optimizingThread.start()
+        except Exception as reason:
+            logging.error(str(reason))
 
 def sysStop(signum, frame):
     safeExit.shutdown()
@@ -424,16 +437,14 @@ if __name__ == "__main__":
         mqttSyncEvent[0].clear()
         mqttSyncEvent[1].clear()
         dataServerListener.start()
-        safeExit = shutdownHandler(mqttHandler = mqttHandler, dataProxyHandler = dataProxyHandler, dataServerListener = dataServerListener, startingTime = startingTime)
+        safeExit = shutdownHandler(mqttHandler = mqttHandler, dataProxyHandler = dataProxyHandler, dataServerListener = dataServerListener)
+        safeExit.optimizingThread = threading.Timer(interval = 3600, function = safeExit.optimizeSQL, args = [dataProxyHandler, False])
+        safeExit.optimizingThread.start()
         signal.signal(signal.SIGTERM, sysStop)
-        scheduler = BackgroundScheduler()
-        scheduler.start()
-        optimizingJob = scheduler.add_job(optimizeSQL, "interval", (dataProxyHandler, False), "OpzJob", "Optimize SQL routine", seconds = 5)
-        print(optimizingJob)
-
+        
         try:
             while True:
-                time.sleep(3600)
+                time.sleep(100)
         except KeyboardInterrupt:
             safeExit.shutdown()
             logger.info("Server stopped because of user")
