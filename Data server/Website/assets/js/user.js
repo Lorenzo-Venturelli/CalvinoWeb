@@ -75,21 +75,42 @@ function pingServer(){
     return;
 }
 
-function buildGraph(){
+function buildGraph(grapData, dataType, sensorNumber){
     var ctx = document.getElementById('graph').getContext('2d');
     //ctx.style.backgroundColor = 'rgba(255,0,0,255)';
     var datas = [];
-    var labels = []
-    var dataType = "Temperatura in °C"
+    var labels = [];
+    for(var xVal in grapData){
+        datas.push(grapData[xVal]);
+        labels.push(xVal);
+    }
+    var dataLabel = null;
+    switch(dataType){
+        case "temperatura":{
+            dataLabel = "Temperatura in °C";
+            break;
+        }
+        case "luce":{
+            dataLabel = "Luce";
+            break;
+        }
+        case "altitudine":{
+            dataLabel = "Altitudine";
+            break;
+        }
+        case "pressione":{
+            dataLabel = "Pressione";
+            break;
+        }
+    }
     var minValue = Math.min(...datas) - 2;
 
-//rgb(160, 160, 160)
     var chart = new Chart(ctx, {
         type: 'line',
         data: {
         labels: labels,
         datasets: [{
-            label: dataType,
+            label: dataLabel,
             data: datas,
             backgroundColor: [
                 'rgba(255, 99, 132, 0.2)'
@@ -101,7 +122,7 @@ function buildGraph(){
             scales: {
               yAxes: [{
                 gridLines: {
-                    color: "#636363"
+                    color: "#ecf0f1"
                 },
                 ticks: {
                   fontColor: "#636363",
@@ -111,7 +132,7 @@ function buildGraph(){
               }],
               xAxes: [{
                 gridLines: {
-                    color: "#636363"
+                    color: "#ecf0f1"
                 },
                 ticks: {
                   fontColor: "#636363",
@@ -135,7 +156,8 @@ ws.addEventListener("message", function (message){
         }
     }
     else if (receivedData["type"] == "gr"){
-
+        console.log(receivedData["values"])
+        buildGraph(receivedData["values"], receivedData["dataType"], receivedData["sensorNumbers"]);
     }
 });
 

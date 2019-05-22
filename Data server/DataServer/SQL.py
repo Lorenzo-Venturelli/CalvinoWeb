@@ -51,7 +51,7 @@ class CalvinoDB():
         firstTime = "\'" + firstTime + "\'"
         lastTime = "\'" + lastTime + "\'"
         self.notifySummarization(state = True)
-        queryResult = self.db.query('''SELECT * FROM ''' + str(dataType) + ''' WHERE Timestamp >= ''' + str(firstTime) + ''' AND Timestamp <= ''' + str(lastTime) + ''' AND ID_sensore = ''' + str(sensorNumber))
+        queryResult = self.db.query('''SELECT * FROM ''' + str(dataType) + ''' WHERE Timestamp >= ''' + str(firstTime) + ''' AND Timestamp <= ''' + str(lastTime) + ''' AND ID_sensore = ''' + str(sensorNumber) + ''' ORDER BY [Timestamp]''')
         self.notifySummarization(state = False)
         if queryResult == True:         # Query succeded without output
             return True

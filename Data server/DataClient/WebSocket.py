@@ -52,7 +52,7 @@ class WsHandler(websocket.WebSocketHandler):
 		obtainedData = self.__parseGdata(data = ast.literal_eval(obtainedData))
 		
 		if type(obtainedData) == dict:
-			gResponse = {"type" : "gr", "values" : obtainedData}
+			gResponse = {"type" : "gr", "values" : obtainedData, "dataType" : dataType, "sensorNumber" : sensorNumber}
 			gResponse = json.dumps(gResponse)
 			self.write_message(gResponse)
 	
