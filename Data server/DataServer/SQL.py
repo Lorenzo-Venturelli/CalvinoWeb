@@ -35,6 +35,7 @@ class CalvinoDB():
             timestamp = "\'" + timestamp + "\'"
 
         query = '''INSERT INTO ''' + str(dataType) + ''' VALUES (''' + str(ID) + ''', ''' + str(sensorNumber) + ''', ''' + str(timestamp) + ''', ''' + str(value) + ''')'''
+        
         if self.__pauseInsert == True:
             self.__queryQueue.put(query)
             return True
@@ -80,7 +81,6 @@ class CalvinoDB():
         if firstTime >= lastTime and skipCheck == False:
             status = (False, 1)
         else:
-            self.__pauseInsert = True
             many = self.request(sensorNumber = sensorNumber, dataType = dataType, firstTime = firstTime, lastTime = lastTime)
             if many == True:
                 status = (False, 2)
@@ -114,9 +114,13 @@ class CalvinoDB():
     def notifySummarization(self, state):
         if state == True:
             self.__pauseInsert = True
-        else:
+            return
+        elif state == False and self.__pauseInsert == True:
             self.__pauseInsert = False
             self.__flushQueue()
+            return
+        else:
+            return
             
     def __flushQueue(self):
         while self.__queryQueue.empty() == False:

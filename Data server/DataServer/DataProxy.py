@@ -72,7 +72,7 @@ class dataProxy():
             match = re.match(pattern = r"([0-9]{4}\-[0-9]{2}\-[0-9]{2}\ [0-9]{2})\:[0-9]{2}\:[0-9]{2}", string = lastTime)
             lastTime = match.group(1) + ":00:00"
 
-            self.SQLProxy.notifySummarization(state = True)
+            #self.SQLProxy.notifySummarization(state = True)
             for sensorNumber in self.lastData.keys():
                 for dataType in self.lastData[sensorNumber].keys():
                     result = self.SQLProxy.summarize(sensorNumber = sensorNumber, dataType = dataType, firstTime = firstTime, lastTime = lastTime, skipCheck = True)
@@ -87,7 +87,7 @@ class dataProxy():
                             self.__logger.warning("Unexpected query error while removing summarized data")
                         elif result[1] == 5:
                             self.__logger.warning("Unexpected query error while inserting new summarized data")
-            self.SQLProxy.notifySummarization(state = False)
+            #self.SQLProxy.notifySummarization(state = False)
         self.__logger.info("Data optimized for interval " + str(firstTime) + " " + str(lastTime))
         return True
 

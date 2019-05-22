@@ -72,7 +72,6 @@ class DataServerAccepter(threading.Thread):
 
         for client in self.connectedClient:
             self.connectedClient[client].disconnect()
-            self.connectedClient[client].join()
 
         fakeClient.close()
         return
@@ -143,6 +142,7 @@ class DataClient(threading.Thread):
             while self.clientConnected == True:
                 try:
                     request = self.getMessage(sock = self.clientSocket)         # Get incoming request pt.1
+                    self.logger.info("Req")
                     if request != None and request != 0 and request != '' and request != str.encode(''):
                         RSAsecret = request                                     # First message of incoming request is the RSA secret
                         self.sendMessage(sock = self.clientSocket, message = str("200").encode())          # Send ACK 1
@@ -152,19 +152,19 @@ class DataClient(threading.Thread):
                             self.sendMessage(sock = self.clientSocket, message = str("200").encode())      # Send ACK2
                         else:
                             self.disconnect()
-                            continue
+                            break
                     else:
                         self.disconnect()
-                        continue
+                        break
                 except ConnectionResetError:
-                    self.clientSocket.disconnect()
-                    continue
+                    self.disconnect()
+                    break
                 except ConnectionAbortedError:
-                    self.clientSocket.disconnect()
-                    continue
+                    self.disconnect()
+                    break
                 except ConnectionError:
-                    self.clientSocket.disconnect()
-                    continue
+                    self.disconnect()
+                    break
                 except Exception as test:
                     self.logger.error("Error: Unknown comunication error occurred with client " + str(self.address[0]))
                     self.logger.info(str(test))
@@ -211,25 +211,25 @@ class DataClient(threading.Thread):
                                     self.sendMessage(sock = self.clientSocket, message = status)    # Send ACK 3 (status)
                                 else:
                                     self.disconnect()
-                                    continue
+                                    break
                             else:
                                 self.disconnect()
-                                continue
+                                break
                         else:
                             self.disconnect()
-                            continue
+                            break
                     else:
                         self.disconnect()
-                        continue
+                        break
                 except ConnectionResetError:
-                    self.clientSocket.disconnect()
-                    continue
+                    self.disconnect()
+                    break
                 except ConnectionAbortedError:
-                    self.clientSocket.disconnect()
-                    continue
+                    self.disconnect()
+                    break
                 except ConnectionError:
-                    self.clientSocket.disconnect()
-                    continue
+                    self.disconnect()
+                    break
                 except Exception:
                     self.logger.warning("Error: Unknown comunication error occurred with client " + str(self.address[0]))
                     continue
@@ -306,9 +306,7 @@ class shutdownHandler():
         try:
             firstTime = datetime.datetime.now() + datetime.timedelta(hours = -1)
             lastTime = firstTime + datetime.timedelta(hours = +1)
-            logging.info("Ci siamo ")
             dataProxy.summarizeData(firstTime = firstTime, lastTime = lastTime, skipCheck = False)
-            logging.info("Ci siamo 2 volte")
             if reason == True:
                 firstTime = firstTime + datetime.timedelta(hours = +1)
                 lastTime = lastTime + datetime.timedelta(hours = +1)
