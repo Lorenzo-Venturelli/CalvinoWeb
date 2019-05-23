@@ -1,4 +1,4 @@
-import socket, json, threading, queue, logging, struct
+import socket, json, threading, queue, logging, struct, time
 import encriptionHandler
 
 class DataRequest(threading.Thread):
@@ -15,7 +15,7 @@ class DataRequest(threading.Thread):
         self.responseQueue = queue.Queue()
         self.__logger = logging.getLogger(name = "Data Client")
         logging.basicConfig(filename = loggingFile, level = logging.INFO)
-        threading.Thread.__init__(self, name = "Data Client Thread", daemon = False)
+        threading.Thread.__init__(self, name = "Data Client Thread", daemon = True)
 
     def disconnect(self):
         self.clientSocket.close()
@@ -206,3 +206,66 @@ class DataRequest(threading.Thread):
         else:
             return False
 
+class connectionNegotiator(threading.Thread):
+    def __init__(self, serverAddress, serverPort, syncEvent, loggingFile):
+        self.__serverAddress = serverAddress
+        self.__serverPort = serverPort
+        self.__syncEvent = syncEvent
+        self.__negotiationEvent = threading.Event()
+        self.__loggingFile = loggingFile
+        self.__logger = logging.getLogger(name = "Negotiator")
+        logging.basicConfig(filename = self.__loggingFile, level = logging.INFO)
+        self.__keepRunning = True
+        self.__connectionNegotiated = False
+        self.__DataClient = None
+        threading.Thread.__init__(self, name = "Negotiator", daemon = False)
+
+    def shutdown(self):
+        self.__keepRunning = False
+        if self.__connectionNegotiated == True:
+            self.__DataClient.disconnect()
+        return
+
+    def insertRequest(self, request):
+        if self.__connectionNegotiated == True:
+            return self.__DataClient.insertRequest(request = request)
+        else:
+            return False
+
+    def getResponse(self):
+        if self.__connectionNegotiated == True:
+            return self.__DataClient.getResponse()
+        else:
+            return False
+
+    def negotiationStatus(self):
+        return self.__connectionNegotiated
+
+    def waitNegotiation(self):
+        self.__negotiationEvent.wait()
+        return
+
+    def run(self):
+        while self.__keepRunning == True:
+            try:
+                self.__DataClient = DataRequest(serverAddress = self.__serverAddress, serverPort = self.__serverPort, syncEvent = self.__syncEvent, loggingFile = self.__loggingFile)
+                self.__DataClient.start()
+                self.__syncEvent.wait()
+                self.__syncEvent.clear()
+                if self.__DataClient.running == True:
+                    self.__connectionNegotiated = True
+                    self.__negotiationEvent.set()
+                    self.__logger.info("Connection negotiatied with Data Server")
+                    self.__DataClient.join()
+                    self.__logger.info("Connection interrupted with Data Server")
+                    self.__DataClient = None
+                    self.__connectionNegotiated = False
+                    self.__negotiationEvent.clear()
+                    time.sleep(60)
+                else:
+                    self.__DataClient = None
+                    self.__connectionNegotiated = False
+                    self.__negotiationEvent.clear()
+                    time.sleep(60)
+
+# Da implementare tutto a modo e da propagare le modifice in WebSocket e MiddleServer
