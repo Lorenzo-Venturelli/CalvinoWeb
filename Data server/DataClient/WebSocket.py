@@ -3,7 +3,7 @@ import time, threading, datetime, json, logging, ast
 import DataClient
 
 serverStatus = True
-dataClient = None
+negotiator = None
 
 class MainHandler(web.RequestHandler):
 	def get(self):
@@ -22,6 +22,8 @@ class WsHandler(websocket.WebSocketHandler):
 				self.__logger.error("Errors occurred while creating scheduler for client " + str(self.request.remote_ip))
 				self.__logger.info("Reason: " + str(reason))
 
+			self.dataServerStatus = negotiator.negotiationStatus
+
 			self.sendRTdata(sensorNumber = self.currentRTsensorNumber)
 		else:
 			self.close()
@@ -36,10 +38,14 @@ class WsHandler(websocket.WebSocketHandler):
 		light = self.__requestData(sensorNumber, 'luce', dataTime)
 		pressure = self.__requestData(sensorNumber, 'pressione', dataTime)
 		highness = self.__requestData(sensorNumber, 'altitudine', dataTime)
-		temp = self.__parseRTData(data = ast.literal_eval(temp))
-		light = self.__parseRTData(data = ast.literal_eval(light))
-		pressure = self.__parseRTData(data = ast.literal_eval(pressure))
-		highness = self.__parseRTData(data = ast.literal_eval(highness))
+		try:
+			temp = self.__parseRTData(data = ast.literal_eval(temp))
+			light = self.__parseRTData(data = ast.literal_eval(light))
+			pressure = self.__parseRTData(data = ast.literal_eval(pressure))
+			highness = self.__parseRTData(data = ast.literal_eval(highness))
+		except ValueError:
+			rtResponse = {"type" : "service", "status" : "down"}
+			self.dataServerStatus = negotiator.negotiationStatus
 
 		rtResponse = {"type" : "rtd", "temp" : temp, "light" : light, "pressure" : pressure, "highness" : highness}
 		rtResponse = json.dumps(rtResponse)
@@ -49,7 +55,11 @@ class WsHandler(websocket.WebSocketHandler):
 	def __sendGdata(self, sensorNumber, dataType, firstTime, lastTime):
 		
 		obtainedData = self.__requestData(sensorNumber = sensorNumber, dataType = dataType, dataTime = (lastTime, firstTime))
-		obtainedData = self.__parseGdata(data = ast.literal_eval(obtainedData))
+		try:
+			obtainedData = self.__parseGdata(data = ast.literal_eval(obtainedData))
+		except ValueError:
+			gResponse = {"type" : "service", "status" : "down"}
+			self.dataServerStatus = negotiator.negotiationStatus
 		
 		if type(obtainedData) == dict:
 			gResponse = {"type" : "gr", "values" : obtainedData, "dataType" : dataType, "sensorNumber" : sensorNumber}
@@ -57,10 +67,12 @@ class WsHandler(websocket.WebSocketHandler):
 			self.write_message(gResponse)
 	
 	def __requestData(self, sensorNumber, dataType, dataTime):
+		global negotiator
+
 		print(str(sensorNumber) + " " + str(dataType) + " " + str(dataTime) )
 		request = {"SN": sensorNumber ,"DT": dataType,"FT": dataTime[1], "LT": dataTime[0]}
-		if dataClient.insertRequest(request) == True:
-			response = dataClient.getResponse()	
+		if negotiator.insertRequest(request) == True:
+			response = negotiator.getResponse()	
 			return response
 		else:
 			return False
@@ -101,9 +113,14 @@ class WsHandler(websocket.WebSocketHandler):
 				message = json.dumps(message)
 				self.write_message(message)
 			else:
-				message = message = {"type":"pong", "status":"open"}
+				message = {"type":"pong", "status":"open"}
 				message = json.dumps(message)
 				self.write_message(message)
+				if self.dataServerStatus == False and negotiator.negotiationStatus == True:
+					self.dataServerStatus = negotiator.negotiationStatus
+					message = {"type" : "service", "status" : "up"}
+					message = json.dumps(message)
+					self.write_message(message)
 		else:
 			parsedMessage = json.loads(message)
 			if "realTimeSN" in parsedMessage.keys():
@@ -122,11 +139,11 @@ class WsHandler(websocket.WebSocketHandler):
 		self.__logger.info("Client " + str(self.request.remote_ip) + " disconnected")
 
 class frontEndHandler(threading.Thread):
-	def __init__(self, tornadoAddress, tornadoPort, dataClientHandler, syncEvent, loggingFile, websitePath):
-		global dataClient
+	def __init__(self, tornadoAddress, tornadoPort, negotiatorHandler, syncEvent, loggingFile, websitePath):
+		global negotiator
 
 		self.tornadoPort = int(tornadoPort)
-		dataClient = dataClientHandler
+		negotiator = negotiatorHandler
 		self.tornadoAddress = tornadoAddress
 		self.syncEvent = syncEvent
 		self.running = True

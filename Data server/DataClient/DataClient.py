@@ -21,6 +21,7 @@ class DataRequest(threading.Thread):
         self.clientSocket.close()
         self.running = False
         self.reaquestQueue.put(False)
+        self.__logger.info("Ecco")
         return
 
     def __rsaHandShake(self):
@@ -98,57 +99,53 @@ class DataRequest(threading.Thread):
         self.__logger.info("Data client disconnected")
 
     def __executeRequest(self, message):
-        error = None
-        jMessage = json.dumps(message)
-        (message, key) = self._DataRequest__generateEncryptedMessage(raw = jMessage, byteObject = False)
-        self.sendMessage(sock = self.clientSocket, message = key)       # Send RSA secret
-        answer = self.getMessage(sock = self.clientSocket)              # Get ACK 1
-        if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
-            answer = answer.decode()
-            if answer == "200":
-                self.sendMessage(sock = self.clientSocket, message = message)       # Send AES secret
-                answer = self.getMessage(sock = self.clientSocket)                  # Get ACK 2
-                if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
-                    answer = answer.decode()
-                    if answer == "200":
-                        answer = self.getMessage(sock = self.clientSocket)          # Get response pt.1
-                        if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
-                            RSAsecret = answer                                      # First response message is RSA secret
-                            self.sendMessage(sock = self.clientSocket, message = str("200").encode())          # Send ACK 1
-                            answer = self.getMessage(sock = self.clientSocket)      # Get response pt.2
-                            if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
-                                AESsecret = answer                                  # Sencond response message is AES secret
-                                plainAnswer = self._DataRequest__decryptMessage(AESsecret = AESsecret, RSAsecret = RSAsecret, byteObject = False)
-                                self.sendMessage(sock = self.clientSocket, message = str("200").encode())      # Send ACK 2
-                                answer = self.getMessage(sock = self.clientSocket)  # Get ACK 3 (Status)
-                                if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
-                                    if answer.decode() == "200":
-                                        return(plainAnswer)
-                                    else:
-                                        error = "Failed ACK 3 - Got " + str(answer.decode())
-                                else:
-                                    error = "Failed ACK 3 - Got anything"
-                            else:
-                                error = "Failed reciving AES secret"
-                        else:
-                            error = "Failed reciving RSA secret"
-                    else:
-                         error = "Failed ACK 2 - Got " + str(answer)
-                else:
-                    error = "Failed ACK 2 - Got anything"
-            else:
-                error = "Failed ACK 1 - Got " + str(answer)
-        else:
-            error = "Failed ACK 1 - Got anything"
-
-        self.__logger.warning("An error occurred while comunicating with Data Server")
-        self.__logger.info("Reason: " + error)
-        return None
-
-    def sendMessage(self, sock, message):
-        message = struct.pack('>I', len(message)) + message
         try:
-            sock.sendall(message)
+            error = None
+            jMessage = json.dumps(message)
+            (message, key) = self._DataRequest__generateEncryptedMessage(raw = jMessage, byteObject = False)
+            self.sendMessage(sock = self.clientSocket, message = key)       # Send RSA secret
+            answer = self.getMessage(sock = self.clientSocket)              # Get ACK 1
+            if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
+                answer = answer.decode()
+                if answer == "200":
+                    self.sendMessage(sock = self.clientSocket, message = message)       # Send AES secret
+                    answer = self.getMessage(sock = self.clientSocket)                  # Get ACK 2
+                    if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
+                        answer = answer.decode()
+                        if answer == "200":
+                            answer = self.getMessage(sock = self.clientSocket)          # Get response pt.1
+                            if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
+                                RSAsecret = answer                                      # First response message is RSA secret
+                                self.sendMessage(sock = self.clientSocket, message = str("200").encode())          # Send ACK 1
+                                answer = self.getMessage(sock = self.clientSocket)      # Get response pt.2
+                                if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
+                                    AESsecret = answer                                  # Sencond response message is AES secret
+                                    plainAnswer = self._DataRequest__decryptMessage(AESsecret = AESsecret, RSAsecret = RSAsecret, byteObject = False)
+                                    self.sendMessage(sock = self.clientSocket, message = str("200").encode())      # Send ACK 2
+                                    answer = self.getMessage(sock = self.clientSocket)  # Get ACK 3 (Status)
+                                    if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
+                                        if answer.decode() == "200":
+                                            return(plainAnswer)
+                                        else:
+                                            error = "Failed ACK 3 - Got " + str(answer.decode())
+                                    else:
+                                        error = "Failed ACK 3 - Got anything"
+                                else:
+                                    error = "Failed reciving AES secret"
+                            else:
+                                error = "Failed reciving RSA secret"
+                        else:
+                            error = "Failed ACK 2 - Got " + str(answer)
+                    else:
+                        error = "Failed ACK 2 - Got anything"
+                else:
+                    error = "Failed ACK 1 - Got " + str(answer)
+            else:
+                error = "Failed ACK 1 - Got anything"
+
+            self.__logger.warning("An error occurred while comunicating with Data Server")
+            self.__logger.info("Reason: " + error)
+            return None
         except ConnectionResetError:
             raise ConnectionResetError
         except ConnectionAbortedError:
@@ -156,6 +153,23 @@ class DataRequest(threading.Thread):
         except ConnectionError:
             raise ConnectionError
         except Exception:
+            return None
+
+    def sendMessage(self, sock, message):
+        message = struct.pack('>I', len(message)) + message
+        try:
+            sock.sendall(message)
+        except ConnectionResetError:
+            logging.info("SSSA")
+            raise ConnectionResetError
+        except ConnectionAbortedError:
+            logging.info("SSSB")
+            raise ConnectionAbortedError
+        except ConnectionError:
+            logging.info("SSSC")
+            raise ConnectionError
+        except Exception:
+            logging.info("SSSX")
             return False
         return True
 
@@ -207,10 +221,10 @@ class DataRequest(threading.Thread):
             return False
 
 class connectionNegotiator(threading.Thread):
-    def __init__(self, serverAddress, serverPort, syncEvent, loggingFile):
+    def __init__(self, serverAddress, serverPort, loggingFile):
         self.__serverAddress = serverAddress
         self.__serverPort = serverPort
-        self.__syncEvent = syncEvent
+        self.__syncEvent = threading.Event()
         self.__negotiationEvent = threading.Event()
         self.__loggingFile = loggingFile
         self.__logger = logging.getLogger(name = "Negotiator")
@@ -267,5 +281,5 @@ class connectionNegotiator(threading.Thread):
                     self.__connectionNegotiated = False
                     self.__negotiationEvent.clear()
                     time.sleep(60)
-
-# Da implementare tutto a modo e da propagare le modifice in WebSocket e MiddleServer
+            except Exception:
+                pass

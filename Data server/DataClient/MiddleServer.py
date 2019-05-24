@@ -5,13 +5,15 @@ import DataClient, WebSocket
 safeExit = None
 
 class shutdownHandler():
-    def __init__(self, dataClient, tornadoHandler):
-        self.dataClient = dataClient
+    def __init__(self, negotiator, tornadoHandler):
+        self.negotiator = negotiator
         self.tornadoHandler = tornadoHandler
 
     def shutdown(self):
-        dataClient.disconnect()
-        tornadoHandler.stop()
+        self.negotiator.shutdown()
+        self.tornadoHandler.stop()
+        self.negotiator.join()
+        self.tornadoHandler.join()
         return
 
 def sysStop(signum, frame):
@@ -70,22 +72,14 @@ if __name__ == "__main__":
 
     tornadoSyncEvent = threading.Event()
     dataClientSyncEvent = threading.Event()
-    dataClient = DataClient.DataRequest(serverAddress = dataServerAddress, serverPort = dataServerPort, syncEvent = dataClientSyncEvent, loggingFile = loggingFile)
-    dataClient.start()
-    dataClientSyncEvent.wait()
-    dataClientSyncEvent.clear()
-    if dataClient.running == True:
-        tornadoHandler = WebSocket.frontEndHandler(tornadoAddress = middleServerAddress, tornadoPort = middleServerPort, dataClientHandler = dataClient, syncEvent = tornadoSyncEvent, loggingFile = loggingFile, websitePath = websitePath)
-        tornadoHandler.start()
-        tornadoSyncEvent.wait()
-        tornadoSyncEvent.clear()
-        if tornadoHandler.running == True:
-            safeExit = shutdownHandler(dataClient = dataClient, tornadoHandler = tornadoHandler)
-            signal.signal(signal.SIGTERM, sysStop)
-            try:
-                while True:
-                    time.sleep(60)
-            except KeyboardInterrupt:
-                safeExit.shutdown()
-                logger.info("Server stopped because of user")
-                quit()
+    negotiator = DataClient.connectionNegotiator(serverAddress = dataServerAddress, serverPort = dataServerPort, loggingFile = loggingFile)
+    negotiator.start()
+    negotiator.waitNegotiation()
+    tornadoHandler = WebSocket.frontEndHandler(tornadoAddress = middleServerAddress, tornadoPort = middleServerPort, negotiatorHandler = negotiator, syncEvent = tornadoSyncEvent, loggingFile = loggingFile, websitePath = websitePath)
+    tornadoHandler.start()
+    tornadoSyncEvent.wait()
+    tornadoSyncEvent.clear()
+    if tornadoHandler.running == True:
+        logger.info("Middle Server started")
+        safeExit = shutdownHandler(negotiator = negotiator, tornadoHandler = tornadoHandler)
+        signal.signal(signal.SIGTERM, sysStop)

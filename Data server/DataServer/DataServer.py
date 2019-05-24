@@ -142,7 +142,6 @@ class DataClient(threading.Thread):
             while self.clientConnected == True:
                 try:
                     request = self.getMessage(sock = self.clientSocket)         # Get incoming request pt.1
-                    self.logger.info("Req")
                     if request != None and request != 0 and request != '' and request != str.encode(''):
                         RSAsecret = request                                     # First message of incoming request is the RSA secret
                         self.sendMessage(sock = self.clientSocket, message = str("200").encode())          # Send ACK 1
