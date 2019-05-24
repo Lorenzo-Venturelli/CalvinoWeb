@@ -1,9 +1,7 @@
 #!/usr/bin/python3
+import queue, datetime,logging, threading
 import SQL_lib
-import queue
 from random import randint
-import datetime
-import logging
 
 # This class provide method to execute SQL DB operations.
 # This class provide building query method and parsing method.
@@ -17,6 +15,8 @@ class CalvinoDB():
         self.__dbPass = password
         self.__queryQueue = queue.Queue()
         self.__pauseInsert = False
+        self.__summarizationOnGoing = threading.Event()
+        self.__summarizationOnGoing.set()
         self.__logger = logging.getLogger(name = "SQL")
         logging.basicConfig(filename = loggingFile, level = logging.INFO)
         self.db = SQL_lib.MsSQL(server = self.__dbAddress, database = self.__dbName, username = self.__dbUser, password = self.__dbPass, logger = self.__logger)
@@ -51,9 +51,9 @@ class CalvinoDB():
     def request(self, sensorNumber, dataType, firstTime, lastTime):
         firstTime = "\'" + firstTime + "\'"
         lastTime = "\'" + lastTime + "\'"
-        self.notifySummarization(state = True)
+        self.__notifyRequest(state = True)
         queryResult = self.db.query('''SELECT * FROM ''' + str(dataType) + ''' WHERE Timestamp >= ''' + str(firstTime) + ''' AND Timestamp <= ''' + str(lastTime) + ''' AND ID_sensore = ''' + str(sensorNumber) + ''' ORDER BY [Timestamp]''')
-        self.notifySummarization(state = False)
+        self.__notifyRequest(state = False)
         if queryResult == True:         # Query succeded without output
             return True
         elif queryResult == False:      # Query failed
@@ -111,7 +111,7 @@ class CalvinoDB():
                     self.__logger.error("Error in summarization: " + str(reason))
         return status
 
-    def notifySummarization(self, state):
+    def __notifyRequest(self, state):
         if state == True:
             self.__pauseInsert = True
             return
@@ -146,3 +146,24 @@ class CalvinoDB():
             self.__logger.info("Reason: " + str(reason))
             return False
         return parsed
+    
+    def notifySummarization(self, status):
+        if status == True:
+            if self.__summarizationOnGoing.isSet() == True:
+                self.__summarizationOnGoing.clear()
+                return True
+            else:
+                return False
+        else:
+            if self.__summarizationOnGoing.isSet() == True:
+                return False
+            else:
+                self.__summarizationOnGoing.set()
+                return True
+
+    def waitForSummarization(self):
+        if self.__summarizationOnGoing.wait(timeout = 60) == True:
+            return True
+        else:
+            self.__summarizationOnGoing.clear()
+            return False

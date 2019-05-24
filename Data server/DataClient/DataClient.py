@@ -160,16 +160,12 @@ class DataRequest(threading.Thread):
         try:
             sock.sendall(message)
         except ConnectionResetError:
-            logging.info("SSSA")
             raise ConnectionResetError
         except ConnectionAbortedError:
-            logging.info("SSSB")
             raise ConnectionAbortedError
         except ConnectionError:
-            logging.info("SSSC")
             raise ConnectionError
         except Exception:
-            logging.info("SSSX")
             return False
         return True
 

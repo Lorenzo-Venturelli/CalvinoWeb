@@ -1,8 +1,9 @@
-var ws = WebSocket("wss://tggstudio.eu/ws");
+var ws = new WebSocket("wss://tggstudio.eu/ws");
 var ctx = document.getElementById('graph').getContext('2d');
 var currentRTSN = document.getElementById("RTSN");
 currentRTSN = currentRTSN.options[currentRTSN.selectedIndex].text;
 var pingInterval = null
+var chart = null
 
 function setDefault(){
     var today = new Date();
@@ -77,7 +78,6 @@ function pingServer(){
 
 function buildGraph(grapData, dataType, sensorNumber){
     var ctx = document.getElementById('graph').getContext('2d');
-    //ctx.style.backgroundColor = 'rgba(255,0,0,255)';
     var datas = [];
     var labels = [];
     for(var xVal in grapData){
@@ -105,7 +105,7 @@ function buildGraph(grapData, dataType, sensorNumber){
     }
     var minValue = Math.min(...datas) - 2;
 
-    var chart = new Chart(ctx, {
+    chart = new Chart(ctx, {
         type: 'line',
         data: {
         labels: labels,
@@ -120,27 +120,29 @@ function buildGraph(grapData, dataType, sensorNumber){
             },
         options: {
             scales: {
-              yAxes: [{
+                yAxes: [{
                 gridLines: {
                     color: "#ecf0f1"
                 },
                 ticks: {
-                  fontColor: "#636363",
-                  beginAtZero: false,
-                  min : minValue
+                    fontColor: "#636363",
+                    beginAtZero: false,
+                    min : minValue
                 }
-              }],
-              xAxes: [{
+                }],
+                xAxes: [{
                 gridLines: {
                     color: "#ecf0f1"
                 },
                 ticks: {
-                  fontColor: "#636363",
+                    fontColor: "#636363",
                 }
-              }]
+                }]
             }
         }
     });
+    
+
 }
 
 ws.addEventListener("message", function (message){

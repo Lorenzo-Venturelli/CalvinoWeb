@@ -72,22 +72,24 @@ class dataProxy():
             match = re.match(pattern = r"([0-9]{4}\-[0-9]{2}\-[0-9]{2}\ [0-9]{2})\:[0-9]{2}\:[0-9]{2}", string = lastTime)
             lastTime = match.group(1) + ":00:00"
 
-            #self.SQLProxy.notifySummarization(state = True)
+            self.SQLProxy.notifySummarization(status = True)
             for sensorNumber in self.lastData.keys():
                 for dataType in self.lastData[sensorNumber].keys():
-                    result = self.SQLProxy.summarize(sensorNumber = sensorNumber, dataType = dataType, firstTime = firstTime, lastTime = lastTime, skipCheck = True)
-                    if result[0] == False:
-                        if result[1] == 1:
-                            self.__logger.warning("Impossible to summarize values if firstTime is bigger than lastTime")
-                        elif result[1] == 2:
-                            self.__logger.warning("No data to summarize for sensor " + str(sensorNumber) + " of type " + str(dataType) + " between " + str(firstTime) + " and " + str(lastTime))
-                        elif result[1] == 3:
-                            self.__logger.warning("Unexpected query error while requesting data to summarize")
-                        elif result[1] == 4:
-                            self.__logger.warning("Unexpected query error while removing summarized data")
-                        elif result[1] == 5:
-                            self.__logger.warning("Unexpected query error while inserting new summarized data")
-            #self.SQLProxy.notifySummarization(state = False)
+                    result = [None, None]
+                    while result[0] != True:
+                        result = self.SQLProxy.summarize(sensorNumber = sensorNumber, dataType = dataType, firstTime = firstTime, lastTime = lastTime, skipCheck = True)
+                        if result[0] == False:
+                            if result[1] == 1:
+                                self.__logger.warning("Impossible to summarize values if firstTime is bigger than lastTime")
+                            elif result[1] == 2:
+                                self.__logger.warning("No data to summarize for sensor " + str(sensorNumber) + " of type " + str(dataType) + " between " + str(firstTime) + " and " + str(lastTime))
+                            elif result[1] == 3:
+                                self.__logger.warning("Unexpected query error while requesting data to summarize")
+                            elif result[1] == 4:
+                                self.__logger.warning("Unexpected query error while removing summarized data")
+                            elif result[1] == 5:
+                                self.__logger.warning("Unexpected query error while inserting new summarized data")
+            self.SQLProxy.notifySummarization(status = False)
         self.__logger.info("Data optimized for interval " + str(firstTime) + " " + str(lastTime))
         return True
 
@@ -105,9 +107,11 @@ class dataProxy():
         
 
     def __DBrequest(self, sensorNumber, dataType, firstTime, lastTime):
-        result = self.SQLProxy.request(sensorNumber = sensorNumber, dataType = dataType, firstTime = firstTime, lastTime = lastTime)
-        return result
-
+        if self.SQLProxy.waitForSummarization() == True:
+            result = self.SQLProxy.request(sensorNumber = sensorNumber, dataType = dataType, firstTime = firstTime, lastTime = lastTime)
+            return result
+        else:
+            return False
 
 if __name__ == "__main__":
     print("Error: This program must be used as a module")
