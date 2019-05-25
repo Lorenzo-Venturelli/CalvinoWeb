@@ -3325,8 +3325,11 @@ input, select, textarea {
 	.graphNav .option
 	{
 		width: 25%;
+		height: 400px;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
 		text-align: center;
-		height: 100%;
 	}
 
 	.graphNav .option h1
@@ -3336,9 +3339,23 @@ input, select, textarea {
 
 	.graphNav .option select
 	{
-		width: auto;
+		width: 80%;
 		text-align: center;
 		margin: 0 auto;
+	}
+	.graphNav input{
+		width: 80%;
+		margin-bottom: 20px;
+		height: 62.5px;
+		text-align: center;
+		border: none;
+		border: 1px solid #DADADA;
+		background: rgba(222, 222, 222, 0.2);
+		border-radius: 6px;
+	}
+	.graphNav a{
+		margin-top: 20px;
+		width: 80%;
 	}
 
 /*	Graph contenent	 */

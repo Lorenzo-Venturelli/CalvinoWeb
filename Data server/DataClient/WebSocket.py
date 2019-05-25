@@ -47,10 +47,14 @@ class WsHandler(websocket.WebSocketHandler):
 			rtResponse = {"type" : "service", "status" : "down"}
 			self.dataServerStatus = negotiator.negotiationStatus
 
-		rtResponse = {"type" : "rtd", "temp" : temp, "light" : light, "pressure" : pressure, "highness" : highness}
-		rtResponse = json.dumps(rtResponse)
-		self.write_message(rtResponse)
-		return
+		if temp == False or light == False or pressure == False or highness == False:
+			rtResponse = {"type" : "service", "status" : "down"}
+			self.dataServerStatus = negotiator.negotiationStatus
+		else:
+			rtResponse = {"type" : "rtd", "temp" : temp, "light" : light, "pressure" : pressure, "highness" : highness}
+			rtResponse = json.dumps(rtResponse)
+			self.write_message(rtResponse)
+			return
 
 	def __sendGdata(self, sensorNumber, dataType, firstTime, lastTime):
 		
@@ -60,11 +64,15 @@ class WsHandler(websocket.WebSocketHandler):
 		except ValueError:
 			gResponse = {"type" : "service", "status" : "down"}
 			self.dataServerStatus = negotiator.negotiationStatus
-		
-		if type(obtainedData) == dict:
-			gResponse = {"type" : "gr", "values" : obtainedData, "dataType" : dataType, "sensorNumber" : sensorNumber}
-			gResponse = json.dumps(gResponse)
-			self.write_message(gResponse)
+
+		if obtainedData == False:
+			gResponse = {"type" : "service", "status" : "down"}
+			self.dataServerStatus = negotiator.negotiationStatus
+		else:
+			if type(obtainedData) == dict:
+				gResponse = {"type" : "gr", "values" : obtainedData, "dataType" : dataType, "sensorNumber" : sensorNumber}
+				gResponse = json.dumps(gResponse)
+				self.write_message(gResponse)
 	
 	def __requestData(self, sensorNumber, dataType, dataTime):
 		global negotiator
@@ -132,7 +140,7 @@ class WsHandler(websocket.WebSocketHandler):
 					firstTime = parsedMessage["grapRequest"]["FT"], 
 					lastTime = parsedMessage["grapRequest"]["LT"])
 			else:
-				print("No vecchio no")
+				return
 
 	def on_close(self):
 		self.RTscheduler.stop()

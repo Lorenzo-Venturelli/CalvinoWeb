@@ -271,7 +271,6 @@ class connectionNegotiator(threading.Thread):
                     self.__DataClient = None
                     self.__connectionNegotiated = False
                     self.__negotiationEvent.clear()
-                    time.sleep(60)
                 else:
                     self.__DataClient = None
                     self.__connectionNegotiated = False
