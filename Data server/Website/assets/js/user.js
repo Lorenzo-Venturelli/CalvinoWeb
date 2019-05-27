@@ -5,14 +5,17 @@ currentRTSN = currentRTSN.options[currentRTSN.selectedIndex].text;
 var pingInterval = null
 var remoteServerStatus = true
 
-const graph = {
-    chart : null,
-    lowerYvalue : 0,
-    graphData : {},
-    graphXlabels : [],
-    firstTime : null,
-    lastTime : null,
-    updateReason : [],
+class Graph{
+    constructor(){
+        this.chart = null;
+        this.lowerYvalue = 0;
+        this.graphData = {};
+        this.graphXlabels = [];
+        this.firstTime = null;
+        this.lastTime = null;
+        this.updateReason = [];
+        this.type = null;
+    }
 
     initializeGraph(graphElementID){
         var ctx = document.getElementById(graphElementID).getContext('2d');
@@ -30,8 +33,8 @@ const graph = {
                         },
                         ticks: {
                             fontColor: "#636363",
-                            beginAtZero: false,
-                            min : 0
+                            beginAtZero: true,
+                            //min : 0
                         }
                     }],
                     xAxes: [{
@@ -44,49 +47,49 @@ const graph = {
             }
         });
         return;
-    },
+    }
 
-    addNewSensor(self, sensorNumber){
+    addNewSensor(sensorNumber){
         console.log(sensorNumber)
-        if(sensorNumber in self.graphData){
+        if(sensorNumber in this.graphData){
             return false;
         }
         else{
-            self.graphData[sensorNumber] = {};
+            this.graphData[sensorNumber] = {};
             return true;
         }
-    },
+    }
 
-    addNewDataType(self, sensorNumber, dataType){
-        if(sensorNumber in self.graphData){
-            if(dataType in self.graphData){
+    addNewDataType(sensorNumber, dataType){
+        if(sensorNumber in this.graphData){
+            if(dataType in this.graphData){
                 return false;
             }
             else{
-                self.graphData[sensorNumber][dataType] = null;
+                this.graphData[sensorNumber][dataType] = null;
                 return true;
             }
         }
         else{
-            if(self.addNewSensor(sensorNumber) == true){
-                self.graphData[sensorNumber][dataType] = null;
+            if(this.addNewSensor(sensorNumber) == true){
+                this.graphData[sensorNumber][dataType] = null;
                 return true;
             }
             else{
                 return false;
             }
         }
-    },
+    }
 
-    addNewValues(self, sensorNumber, dataType, value){
-        if(sensorNumber in self.graphData){
-            if(dataType in self.graphData[sensorNumber]){
-                self.graphData[sensorNumber][dataType] = value;
+    addNewValues(sensorNumber, dataType, value){
+        if(sensorNumber in this.graphData){
+            if(dataType in this.graphData[sensorNumber]){
+                this.graphData[sensorNumber][dataType] = value;
                 return true;
             }
             else{
-                if(self.addNewDataType(sensorNumber, dataType) == true){
-                    self.graphData[sensorNumber][dataType] = value;
+                if(this.addNewDataType(sensorNumber, dataType) == true){
+                    this.graphData[sensorNumber][dataType] = value;
                     return true;
                 }
                 else{
@@ -95,9 +98,9 @@ const graph = {
             }
         }
         else{
-            if(self.addNewSensor(sensorNumber) == true){
-                if(self.addNewDataType(sensorNumber, dataType) == true){
-                    self.graphData[sensorNumber][dataType] = value;
+            if(this.addNewSensor(sensorNumber) == true){
+                if(this.addNewDataType(sensorNumber, dataType) == true){
+                    this.graphData[sensorNumber][dataType] = value;
                     return true;
                 }
                 else{
@@ -108,22 +111,22 @@ const graph = {
                 return false;
             }
         }
-    },
+    }
 
-    removeSensor(self, sensorNumber){
-        if(sensorNumber in self.graphData){
-            delete self.graphData[sensorNumber];
+    removeSensor(sensorNumber){
+        if(sensorNumber in this.graphData){
+            delete this.graphData[sensorNumber];
             return true;
         }
         else{
             return false;
         }
-    },
+    }
 
-    removeDataType(self, sensorNumber, dataType){
-        if(sensorNumber in self.graphData){
-            if(dataType in self.graphData){
-                delete self.graphData[sensorNumber][dataType];
+    removeDataType(sensorNumber, dataType){
+        if(sensorNumber in this.graphData){
+            if(dataType in this.graphData){
+                delete this.graphData[sensorNumber][dataType];
                 return true;
             }
             else{
@@ -133,57 +136,104 @@ const graph = {
         else{
             return false;
         }
-    },
+    }
 
-    clearGraph(self){
-        self.lowerYvalue = 0;
-        self.graphData = {};
-        self.graphXlabels = [];
-        self.firstTime = null;
-        self.lastTime = null;
+    clearGraph(){
+        this.lowerYvalue = 0;
+        this.graphData = {};
+        this.graphXlabels = [];
+        this.firstTime = null;
+        this.lastTime = null;
+        this.type = null;
         return;
-    },
+    }
 
-    generateNewGraph(self, sensorNumber, dataType, value){
-        this.clearGraph(self);
+    generateNewGraph(sensorNumber, dataType, value){
+        this.clearGraph();
+        this.type = dataType;
 
-        if(this.addNewSensor(self, sensorNumber) == false){
+        if(this.addNewSensor(sensorNumber) == false){
             return false;
         }
-        if(this.addNewDataType(self, sensorNumber, dataType) == false){
+        if(this.addNewDataType(sensorNumber, dataType) == false){
             return false;
         }
         var tmp = [];
-        for(xVal in value){
-            self.graphXlabels.push(xVal);
+        for(var xVal in value){
+            this.graphXlabels.push(xVal);
             tmp.push(value[xVal]);
         }
-        if(this.addNewValues(self, sensorNumber, dataType, tmp) == false){
+        if(this.addNewValues(sensorNumber, dataType, tmp) == false){
             return false;
         }
 
-        self.firstTime = self.graphXlabels[0];
-        self.lastTime = self.graphXlabels[self.graphXlabels.length - 1];
-        console.log(self)
+        this.firstTime = this.graphXlabels[0];
+        this.lastTime = this.graphXlabels[this.graphXlabels.length - 1];
+        console.log(this)
 
-        self.lowerYvalue = Math.round((Math.min(...self.graphData[sensorNumber][dataType]) - (Math.max(...self.graphData[sensorNumber][dataType])) / 4));
+        //this.lowerYvalue = Math.round((Math.min(...this.graphData[sensorNumber][dataType]) - (Math.max(...this.graphData[sensorNumber][dataType])) / 4));
         var dataset = {
             label : [String(dataType + " " + sensorNumber)],
-            data : self.graphData[sensorNumber][dataType],
+            data : this.graphData[sensorNumber][dataType],
             backgroundColor : ['rgba(255, 99, 132, 0.2)']
         }
 
-        self.chart.data.labels = self.graphXlabels
-        self.chart.data.datasets = []
-        self.chart.data.datasets.push(dataset);
-        self.chart.options.scales.yAxes[0].ticks.min = self.lowerYvalue;
-        self.chart.update()
+        this.chart.data.labels = this.graphXlabels
+        this.chart.data.datasets = []
+        this.chart.data.datasets.push(dataset);
+        //this.chart.options.scales.yAxes[0].ticks.min = this.lowerYvalue;
+        this.chart.update()
 
         return true;
     }
-};
 
-var chart = Object.create(graph);
+    addElement(sensorNumber, dataType, value){
+        if(this.type != dataType){
+            return false;
+        }
+
+        if(this.addNewSensor(sensorNumber) == false){
+            return false;
+        }
+        if(this.addNewDataType(sensorNumber, dataType) == false){
+            return false;
+        }
+        var tmp = [];
+        for(var xVal in value){
+            tmp.push(value[xVal]);
+        }
+        if(this.addNewValues(sensorNumber, dataType, tmp) == false){
+            return false;
+        }
+
+        var dataset = {
+            label : [String(dataType + " " + sensorNumber)],
+            data : this.graphData[sensorNumber][dataType],
+            backgroundColor : ['rgba(255, 105, 132, 0.2)']
+        }
+
+        this.chart.data.datasets.push(dataset);
+        this.chart.options.scales.yAxes[0].ticks.min = this.lowerYvalue;
+        this.chart.update()
+    }
+
+    removeElement(sensorNumber, dataType){
+        this.removeDataType(sensorNumber, dataType);
+        this.removeSensor(sensorNumber);
+        var dataset = null;
+        for(dataset in this.chart.data.datasets){
+            if(dataset.label == [String(dataType + " " + sensorNumber)]){
+                break;
+            }
+        }
+        delete this.chart.data.datasets[this.chart.data.datasets.findIndex(()=>{
+            return dataset;
+        })];
+        this.chart.update();
+    }
+}
+
+var chart = new Graph();
 
 function setDefault(){
     var today = new Date();
@@ -229,16 +279,18 @@ function RTupdate(temp, light, pressure, highness){
 
 function changeGraph(reason){
     if(reason == 1){
-        graph.updateReason.push(1);
+        chart.updateReason.push(1);
         GDrequest();
         return;
     }
     else if(reason == 2){
-        graph.updateReason.push(1);
+        chart.updateReason.push(2);
+        GDrequest();
         return;
     }
     else if(reason == 3){
-        graph.updateReason.push(1);
+        chart.updateReason.push(3);
+        GDrequest();
         return;
     }
     else{
@@ -248,19 +300,39 @@ function changeGraph(reason){
 
 function GDrequest(){
     if(remoteServerStatus == true){
-        var x = document.getElementById("GSN");
-        var sensorNumber = x.options[x.selectedIndex].value;
-        x = document.getElementById("GDT");
-        var dataType = x.options[x.selectedIndex].value;
-        var Fdata = document.getElementById("GFTD").value;
-        var Ldata = document.getElementById("GLTD").value;
-        var Ftime = document.getElementById("GFTT").value;
-        var Ltime = document.getElementById("GLTT").value;
-    
-        var firstTime = Fdata + " " + Ftime + ":00";
-        var lastTime = Ldata + " " + Ltime + ":00";
-    
-        sendGDrequest(sensorNumber, dataType, firstTime, lastTime);
+        if(chart.updateReason[0] == 1){
+            var x = document.getElementById("GSN");
+            var sensorNumber = x.options[x.selectedIndex].value;
+            x = document.getElementById("GDT");
+            var dataType = x.options[x.selectedIndex].value;
+            var Fdata = document.getElementById("GFTD").value;
+            var Ldata = document.getElementById("GLTD").value;
+            var Ftime = document.getElementById("GFTT").value;
+            var Ltime = document.getElementById("GLTT").value;
+        
+            var firstTime = Fdata + " " + Ftime + ":00";
+            var lastTime = Ldata + " " + Ltime + ":00";
+        
+            sendGDrequest(sensorNumber, dataType, firstTime, lastTime);
+        }
+        else if(chart.updateReason[0] == 2){
+            var x = document.getElementById("GSN");
+            var sensorNumber = x.options[x.selectedIndex].value;
+            x = document.getElementById("GDT");
+            var dataType = x.options[x.selectedIndex].value;
+            var firstTime = chart.firstTime;
+            var lastTime = chart.lastTime;
+
+            sendGDrequest(sensorNumber, dataType, firstTime, lastTime);
+        }
+        else if (chart.updateReason[0] == 3){
+            var x = document.getElementById("GSN");
+            var sensorNumber = x.options[x.selectedIndex].value;
+            x = document.getElementById("GDT");
+            var dataType = x.options[x.selectedIndex].value;
+            chart.updateReason.pop();
+            chart.removeElement(sensorNumber, dataType);
+        }
     }
     else{
         alert("Il server MQTT non è disponibile al momento");
@@ -289,7 +361,15 @@ function pingServer(){
 }
 
 function buildGraph(graphData, dataType, sensorNumber){
-    graph.generateNewGraph(chart, sensorNumber, dataType, graphData);
+    if(chart.updateReason[0] == 1){
+        chart.updateReason.pop();
+        chart.generateNewGraph(sensorNumber, dataType, graphData);
+    }
+    else if(chart.updateReason[0] == 2){
+        chart.updateReason.pop();
+        chart.addElement(sensorNumber, dataType, graphData);
+    }
+    
     return;
 }
 
@@ -311,11 +391,7 @@ ws.addEventListener("message", function (message){
         }
     }
     else if (receivedData["type"] == "gr"){
-        var reason = graph.updateReason.pop();
-        if (reason == 1){
-            buildGraph(receivedData["values"], receivedData["dataType"], receivedData["sensorNumber"]);
-        }
-        
+        buildGraph(receivedData["values"], receivedData["dataType"], receivedData["sensorNumber"]);
     }
     else if(receivedData["type"] == "service"){
         if (receivedData["status"] == "down" && remoteServerStatus == true){
