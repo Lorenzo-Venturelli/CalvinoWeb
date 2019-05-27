@@ -15,6 +15,7 @@ class Graph{
         this.lastTime = null;
         this.updateReason = [];
         this.type = null;
+        this.initializated = false;
     }
 
     initializeGraph(graphElementID){
@@ -169,67 +170,71 @@ class Graph{
 
         this.firstTime = this.graphXlabels[0];
         this.lastTime = this.graphXlabels[this.graphXlabels.length - 1];
-        console.log(this)
 
-        //this.lowerYvalue = Math.round((Math.min(...this.graphData[sensorNumber][dataType]) - (Math.max(...this.graphData[sensorNumber][dataType])) / 4));
         var dataset = {
-            label : [String(dataType + " " + sensorNumber)],
+            label : String(dataType + " " + sensorNumber),
             data : this.graphData[sensorNumber][dataType],
-            backgroundColor : ['rgba(255, 99, 132, 0.2)']
+            backgroundColor : 'rgba(' + (Math.floor(Math.random() * 256)) + ', ' + (Math.floor(Math.random() * 256)) + ', ' + (Math.floor(Math.random() * 256)) +  ', 0.2)'
         }
 
-        this.chart.data.labels = this.graphXlabels
-        this.chart.data.datasets = []
+        this.chart.data.labels = this.graphXlabels;
+        this.chart.data.datasets = [];
         this.chart.data.datasets.push(dataset);
-        //this.chart.options.scales.yAxes[0].ticks.min = this.lowerYvalue;
-        this.chart.update()
+        this.chart.update();
+        this.initializated = true;
 
         return true;
     }
 
     addElement(sensorNumber, dataType, value){
-        if(this.type != dataType){
+        if(this.initializated == true){
+            if(this.type != dataType){
+                return false;
+            }
+    
+            if(this.addNewSensor(sensorNumber) == false){
+                return false;
+            }
+            if(this.addNewDataType(sensorNumber, dataType) == false){
+                return false;
+            }
+            var tmp = [];
+            for(var xVal in value){
+                tmp.push(value[xVal]);
+            }
+            if(this.addNewValues(sensorNumber, dataType, tmp) == false){
+                return false;
+            }
+    
+            var dataset = {
+                label : String(dataType + " " + sensorNumber),
+                data : this.graphData[sensorNumber][dataType],
+                backgroundColor : 'rgba(' + (Math.floor(Math.random() * 256)) + ',' + (Math.floor(Math.random() * 256)) + ',' + (Math.floor(Math.random() * 256)) +  ', 0.2)'
+            }
+    
+            this.chart.data.datasets.push(dataset);
+            this.chart.options.scales.yAxes[0].ticks.min = this.lowerYvalue;
+            this.chart.update()
+        }
+        else{
             return false;
         }
-
-        if(this.addNewSensor(sensorNumber) == false){
-            return false;
-        }
-        if(this.addNewDataType(sensorNumber, dataType) == false){
-            return false;
-        }
-        var tmp = [];
-        for(var xVal in value){
-            tmp.push(value[xVal]);
-        }
-        if(this.addNewValues(sensorNumber, dataType, tmp) == false){
-            return false;
-        }
-
-        var dataset = {
-            label : [String(dataType + " " + sensorNumber)],
-            data : this.graphData[sensorNumber][dataType],
-            backgroundColor : ['rgba(255, 105, 132, 0.2)']
-        }
-
-        this.chart.data.datasets.push(dataset);
-        this.chart.options.scales.yAxes[0].ticks.min = this.lowerYvalue;
-        this.chart.update()
     }
 
     removeElement(sensorNumber, dataType){
-        this.removeDataType(sensorNumber, dataType);
-        this.removeSensor(sensorNumber);
-        var dataset = null;
-        for(dataset in this.chart.data.datasets){
-            if(dataset.label == [String(dataType + " " + sensorNumber)]){
-                break;
+        if(this.initializated == true && this.chart.data.datasets.length > 1){
+            this.removeDataType(sensorNumber, dataType);
+            this.removeSensor(sensorNumber);
+            var dataset = null;
+            var searchedDataset = String(dataType + " " + sensorNumber)
+            console.log(searchedDataset)
+            for(dataset in this.chart.data.datasets){
+                if (this.chart.data.datasets[dataset].label == searchedDataset){
+                    this.chart.data.datasets.splice(dataset, 1);
+                    this.chart.update();
+                }
             }
         }
-        delete this.chart.data.datasets[this.chart.data.datasets.findIndex(()=>{
-            return dataset;
-        })];
-        this.chart.update();
     }
 }
 
@@ -315,7 +320,7 @@ function GDrequest(){
         
             sendGDrequest(sensorNumber, dataType, firstTime, lastTime);
         }
-        else if(chart.updateReason[0] == 2){
+        else if(chart.updateReason[0] == 2 && chart.initializated == true){
             var x = document.getElementById("GSN");
             var sensorNumber = x.options[x.selectedIndex].value;
             x = document.getElementById("GDT");
@@ -325,13 +330,16 @@ function GDrequest(){
 
             sendGDrequest(sensorNumber, dataType, firstTime, lastTime);
         }
-        else if (chart.updateReason[0] == 3){
+        else if (chart.updateReason[0] == 3 && chart.initializated == true){
             var x = document.getElementById("GSN");
             var sensorNumber = x.options[x.selectedIndex].value;
             x = document.getElementById("GDT");
             var dataType = x.options[x.selectedIndex].value;
             chart.updateReason.pop();
             chart.removeElement(sensorNumber, dataType);
+        }
+        else{
+            chart.updateReason.pop()
         }
     }
     else{

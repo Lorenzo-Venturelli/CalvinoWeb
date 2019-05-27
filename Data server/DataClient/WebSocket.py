@@ -47,14 +47,15 @@ class WsHandler(websocket.WebSocketHandler):
 			rtResponse = {"type" : "service", "status" : "down"}
 			self.dataServerStatus = negotiator.negotiationStatus
 
-		if temp == False or light == False or pressure == False or highness == False:
+		if temp == False and light == False and pressure == False and highness == False:
 			rtResponse = {"type" : "service", "status" : "down"}
 			self.dataServerStatus = negotiator.negotiationStatus
 		else:
 			rtResponse = {"type" : "rtd", "temp" : temp, "light" : light, "pressure" : pressure, "highness" : highness}
 			rtResponse = json.dumps(rtResponse)
-			self.write_message(rtResponse)
-			return
+			
+		self.write_message(rtResponse)
+		return
 
 	def __sendGdata(self, sensorNumber, dataType, firstTime, lastTime):
 		
@@ -72,7 +73,11 @@ class WsHandler(websocket.WebSocketHandler):
 			if type(obtainedData) == dict:
 				gResponse = {"type" : "gr", "values" : obtainedData, "dataType" : dataType, "sensorNumber" : sensorNumber}
 				gResponse = json.dumps(gResponse)
-				self.write_message(gResponse)
+			else:
+				return
+		
+		self.write_message(gResponse)
+		return
 	
 	def __requestData(self, sensorNumber, dataType, dataTime):
 		global negotiator
