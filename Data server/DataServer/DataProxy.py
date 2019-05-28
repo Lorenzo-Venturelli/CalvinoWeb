@@ -66,7 +66,7 @@ class dataProxy():
     def summarizeData(self, firstTime, lastTime, skipCheck = False):
         if firstTime >= lastTime:
             return False
-        elif self.__lastSumm <= lastTime:
+        elif self.__lastSumm <= lastTime or skipCheck == True:
             self.__lastSumm = datetime.datetime.now()
             firstTime = str(firstTime)[:-7]
             match = re.match(pattern = r"([0-9]{4}\-[0-9]{2}\-[0-9]{2}\ [0-9]{2})\:[0-9]{2}\:[0-9]{2}", string = firstTime)

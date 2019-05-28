@@ -302,26 +302,31 @@ class shutdownHandler():
         self.dataServerListener.stop()
         self.mqttHandler.join()
         self.dataServerListener.join()
-        self.optimizeSQL(reason = True)
+        self.optimizeSQL(reason = True, oneTime = False)
         return
 
-    def optimizeSQL(self, reason, oneTime = False, lastTime = None):
+    def optimizeSQL(self, reason = False, oneTime = False, lastTime = None):
         try:
             if oneTime == False:
                 firstTime = datetime.datetime.now() + datetime.timedelta(hours = -1)
                 lastTime = firstTime + datetime.timedelta(hours = +1)
+                self.dataProxyHandler.summarizeData(firstTime = firstTime, lastTime = lastTime, skipCheck = True)
             else:
                 groups = re.match(pattern = r"([0-9]{4})\-([0-9]{2})\-([0-9]{2})\ ([0-9]{2})\:([0-9]{2})\:([0-9]{2})", string = lastTime)
                 lastTime = datetime.datetime(year = int(groups.group(1)), month = int(groups.group(2)), day = int(groups.group(3)), hour = int(groups.group(4)), minute = int(groups.group(5)), second = int(groups.group(6)), microsecond = 123456)
                 firstTime = lastTime + datetime.timedelta(hours = -1)
-            self.dataProxyHandler.summarizeData(firstTime = firstTime, lastTime = lastTime, skipCheck = False)
+                self.dataProxyHandler.summarizeData(firstTime = firstTime, lastTime = lastTime, skipCheck = False)
+            
             if reason == True:
                 firstTime = firstTime + datetime.timedelta(hours = +1)
                 lastTime = lastTime + datetime.timedelta(hours = +1)
-                self.dataProxyHandler.summarizeData(firstTime = firstTime, lastTime = lastTime, skipCheck = False)
+                if oneTime == False:
+                    self.dataProxyHandler.summarizeData(firstTime = firstTime, lastTime = lastTime, skipCheck = True)
+                else:
+                    self.dataProxyHandler.summarizeData(firstTime = firstTime, lastTime = lastTime, skipCheck = False)
             
             if self.serverRunning == True and oneTime == False:
-                self.optimizingThread = threading.Timer(interval = 3600, function = self.optimizeSQL, args = [False])
+                self.optimizingThread = threading.Timer(interval = 3600, function = self.optimizeSQL)
                 self.optimizingThread.start()
         except Exception as reason:
             logging.error(str(reason))
@@ -444,7 +449,7 @@ if __name__ == "__main__":
         mqttSyncEvent[1].clear()
         dataServerListener.start()
         safeExit = shutdownHandler(mqttHandler = mqttHandler, dataProxyHandler = dataProxyHandler, dataServerListener = dataServerListener)
-        safeExit.optimizingThread = threading.Timer(interval = 3600, function = safeExit.optimizeSQL, args = [dataProxyHandler, False])
+        safeExit.optimizingThread = threading.Timer(interval = 3600, function = safeExit.optimizeSQL)
         safeExit.optimizingThread.start()
         signal.signal(signal.SIGTERM, sysStop)
         

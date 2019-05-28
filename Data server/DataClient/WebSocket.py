@@ -22,7 +22,7 @@ class WsHandler(websocket.WebSocketHandler):
 				self.__logger.error("Errors occurred while creating scheduler for client " + str(self.request.remote_ip))
 				self.__logger.info("Reason: " + str(reason))
 
-			self.dataServerStatus = negotiator.negotiationStatus
+			self.dataServerStatus = negotiator.negotiationStatus()
 
 			self.sendRTdata(sensorNumber = self.currentRTsensorNumber)
 		else:
@@ -45,11 +45,11 @@ class WsHandler(websocket.WebSocketHandler):
 			highness = self.__parseRTData(data = ast.literal_eval(highness))
 		except ValueError:
 			rtResponse = {"type" : "service", "status" : "down"}
-			self.dataServerStatus = negotiator.negotiationStatus
+			self.dataServerStatus = negotiator.negotiationStatus()
 
 		if temp == False and light == False and pressure == False and highness == False:
 			rtResponse = {"type" : "service", "status" : "down"}
-			self.dataServerStatus = negotiator.negotiationStatus
+			self.dataServerStatus = negotiator.negotiationStatus()
 		else:
 			rtResponse = {"type" : "rtd", "temp" : temp, "light" : light, "pressure" : pressure, "highness" : highness}
 			rtResponse = json.dumps(rtResponse)
@@ -64,11 +64,11 @@ class WsHandler(websocket.WebSocketHandler):
 			obtainedData = self.__parseGdata(data = ast.literal_eval(obtainedData))
 		except ValueError:
 			gResponse = {"type" : "service", "status" : "down"}
-			self.dataServerStatus = negotiator.negotiationStatus
+			self.dataServerStatus = negotiator.negotiationStatus()
 
 		if obtainedData == False:
 			gResponse = {"type" : "service", "status" : "down"}
-			self.dataServerStatus = negotiator.negotiationStatus
+			self.dataServerStatus = negotiator.negotiationStatus()
 		else:
 			if type(obtainedData) == dict:
 				gResponse = {"type" : "gr", "values" : obtainedData, "dataType" : dataType, "sensorNumber" : sensorNumber}
@@ -129,8 +129,8 @@ class WsHandler(websocket.WebSocketHandler):
 				message = {"type":"pong", "status":"open"}
 				message = json.dumps(message)
 				self.write_message(message)
-				if self.dataServerStatus == False and negotiator.negotiationStatus == True:
-					self.dataServerStatus = negotiator.negotiationStatus
+				if negotiator.negotiationStatus() == True:
+					self.dataServerStatus = negotiator.negotiationStatus()
 					message = {"type" : "service", "status" : "up"}
 					message = json.dumps(message)
 					self.write_message(message)

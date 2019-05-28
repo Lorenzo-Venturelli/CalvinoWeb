@@ -283,6 +283,7 @@ function RTupdate(temp, light, pressure, highness){
 }
 
 function changeGraph(reason){
+    while(chart.updateReason.length > 1){}
     if(reason == 1){
         chart.updateReason.push(1);
         GDrequest();
@@ -321,7 +322,6 @@ function GDrequest(){
 
             if(Date.parse(lastTime) > Date.parse(firstTime) && Date.parse(lastTime) < currentTime){
                 sendGDrequest(sensorNumber, dataType, firstTime, lastTime);
-                chart.updateReason.pop()
             }
             else{
                 window.alert("La data di inizio deve essere antecedente a quella di fine!")
@@ -383,6 +383,9 @@ function buildGraph(graphData, dataType, sensorNumber){
     else if(chart.updateReason[0] == 2){
         chart.updateReason.pop();
         chart.addElement(sensorNumber, dataType, graphData);
+    }
+    else{
+        chart.updateReason.pop();
     }
     
     return;
