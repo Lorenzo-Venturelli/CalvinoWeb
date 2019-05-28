@@ -317,8 +317,15 @@ function GDrequest(){
         
             var firstTime = Fdata + " " + Ftime + ":00";
             var lastTime = Ldata + " " + Ltime + ":00";
+
+            if(Date.parse(lastTime) > Date.parse(firstTime)){
+                sendGDrequest(sensorNumber, dataType, firstTime, lastTime);
+            }
+            else{
+                window.alert("La data di inizio deve essere antecedente a quella di fine!")
+            }
         
-            sendGDrequest(sensorNumber, dataType, firstTime, lastTime);
+            
         }
         else if(chart.updateReason[0] == 2 && chart.initializated == true){
             var x = document.getElementById("GSN");

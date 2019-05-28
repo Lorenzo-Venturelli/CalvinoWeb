@@ -45,10 +45,12 @@ class MsSQL():
 
     def query(self, query, args = tuple()):
         try:
-            self.__lock.acquire()
-            self.__cursor.execute(query, args)
-            self.__db.commit()
-            self.__lock.release()
+            if self.__lock.acquire(timeout = 120):
+                self.__cursor.execute(query, args)
+                self.__db.commit()
+                self.__lock.release()
+            else:
+                raise Exception("Failed to aquire lock. Propably something is still pending")
         except Exception as reason:
             self.__logger.error("Database transaction error")
             self.__logger.info("Reason: " + str(reason))

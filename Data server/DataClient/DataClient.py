@@ -21,7 +21,6 @@ class DataRequest(threading.Thread):
         self.clientSocket.close()
         self.running = False
         self.reaquestQueue.put(False)
-        self.__logger.info("Ecco")
         return
 
     def __rsaHandShake(self):

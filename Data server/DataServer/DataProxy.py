@@ -6,6 +6,7 @@ import json
 import re
 import logging
 import SQL
+import datetime
 
 # This class provide a proxy interface between SQL handler class and others classes.
 # This class also provide automatic parsing processes for data in both direction to
@@ -18,6 +19,7 @@ class dataProxy():
         self.syncEvents = syncEvents
         self.proxyLock = lock
         self.proxy = proxy
+        self.__lastSumm = datetime.datetime.now()
         self.__logger = logging.getLogger(name = "DataProxy")
         logging.basicConfig(filename = loggingFile, level = logging.INFO)
 
@@ -64,7 +66,8 @@ class dataProxy():
     def summarizeData(self, firstTime, lastTime, skipCheck = False):
         if firstTime >= lastTime:
             return False
-        else:
+        elif self.__lastSumm <= lastTime:
+            self.__lastSumm = datetime.datetime.now()
             firstTime = str(firstTime)[:-7]
             match = re.match(pattern = r"([0-9]{4}\-[0-9]{2}\-[0-9]{2}\ [0-9]{2})\:[0-9]{2}\:[0-9]{2}", string = firstTime)
             firstTime = match.group(1) + ":00:00"
@@ -76,7 +79,9 @@ class dataProxy():
             for sensorNumber in self.lastData.keys():
                 for dataType in self.lastData[sensorNumber].keys():
                     result = [None, None]
-                    while result[0] != True:
+                    attemps = 0
+                    while result[0] != True and attemps < 3:
+                        attemps = attemps + 1
                         result = self.SQLProxy.summarize(sensorNumber = sensorNumber, dataType = dataType, firstTime = firstTime, lastTime = lastTime, skipCheck = True)
                         if result[0] == False:
                             if result[1] == 1:
@@ -90,8 +95,10 @@ class dataProxy():
                             elif result[1] == 5:
                                 self.__logger.warning("Unexpected query error while inserting new summarized data")
             self.SQLProxy.notifySummarization(status = False)
-        self.__logger.info("Data optimized for interval " + str(firstTime) + " " + str(lastTime))
-        return True
+            self.__logger.info("Data optimized for interval " + str(firstTime) + " " + str(lastTime))
+            return True
+        else:
+            return False
 
 
     def __notifyUpdate(self, sensorNumber, dataType, dataValue):

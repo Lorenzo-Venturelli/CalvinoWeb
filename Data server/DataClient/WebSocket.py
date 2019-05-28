@@ -34,10 +34,10 @@ class WsHandler(websocket.WebSocketHandler):
 
 	def sendRTdata(self, sensorNumber):
 		dataTime = (str(datetime.datetime.now())[:-7], str(datetime.datetime.now() + datetime.timedelta(minutes = -1))[:-7])
-		temp = self.__requestData(sensorNumber, 'temperatura', dataTime)
-		light = self.__requestData(sensorNumber, 'luce', dataTime)
-		pressure = self.__requestData(sensorNumber, 'pressione', dataTime)
-		highness = self.__requestData(sensorNumber, 'altitudine', dataTime)
+		temp = self.__requestData(sensorNumber, 'temperatura', dataTime, False)
+		light = self.__requestData(sensorNumber, 'luce', dataTime, False)
+		pressure = self.__requestData(sensorNumber, 'pressione', dataTime, False)
+		highness = self.__requestData(sensorNumber, 'altitudine', dataTime, False)
 		try:
 			temp = self.__parseRTData(data = ast.literal_eval(temp))
 			light = self.__parseRTData(data = ast.literal_eval(light))
@@ -59,7 +59,7 @@ class WsHandler(websocket.WebSocketHandler):
 
 	def __sendGdata(self, sensorNumber, dataType, firstTime, lastTime):
 		
-		obtainedData = self.__requestData(sensorNumber = sensorNumber, dataType = dataType, dataTime = (lastTime, firstTime))
+		obtainedData = self.__requestData(sensorNumber = sensorNumber, dataType = dataType, dataTime = (lastTime, firstTime), reason = True)
 		try:
 			obtainedData = self.__parseGdata(data = ast.literal_eval(obtainedData))
 		except ValueError:
@@ -79,11 +79,11 @@ class WsHandler(websocket.WebSocketHandler):
 		self.write_message(gResponse)
 		return
 	
-	def __requestData(self, sensorNumber, dataType, dataTime):
+	def __requestData(self, sensorNumber, dataType, dataTime, reason):
 		global negotiator
 
 		print(str(sensorNumber) + " " + str(dataType) + " " + str(dataTime) )
-		request = {"SN": sensorNumber ,"DT": dataType,"FT": dataTime[1], "LT": dataTime[0]}
+		request = {"SN": sensorNumber ,"DT": dataType,"FT": dataTime[1], "LT": dataTime[0], "RS" : reason}
 		if negotiator.insertRequest(request) == True:
 			response = negotiator.getResponse()	
 			return response
@@ -110,7 +110,7 @@ class WsHandler(websocket.WebSocketHandler):
 			parsedData = dict()
 			for item in data.keys():
 				if data[item][1] in parsedData:
-					parsedData[data[item][1]] = round(((data[item][2] + parsedData[data[item][1]]) / 2), 1)
+					parsedData[data[item][1]] = round(((float(data[item][2]) + float(parsedData[data[item][1]])) / 2), 1)
 				else:
 					parsedData[data[item][1]] = data[item][2]
 			return parsedData

@@ -175,8 +175,12 @@ class DataClient(threading.Thread):
                 except json.JSONDecodeError:
                     self.logger.warning("Error: Received corrupted request from host " + str(self.address[0]))
                     continue
-                if "SN" in request.keys() and "DT" in request.keys() and "FT" in request.keys() and "LT" in request.keys():
-                    if request["SN"] != None and request["DT"] != None and request["FT"] != None and request["LT"] != None:     
+                if "SN" in request.keys() and "DT" in request.keys() and "FT" in request.keys() and "LT" in request.keys() and "RS" in request.keys():
+                    if request["SN"] != None and request["DT"] != None and request["FT"] != None and request["LT"] != None and request["RS"] != None:
+
+                        if request["RS"] == True:
+                            safeExit.optimizeSQL(reason = True, oneTime = True, lastTime = request["LT"])
+
                         result = self.dataProxy.requestData(sensorNumber = request["SN"], dataType = request["DT"], firstTime = request["FT"], lastTime = request["LT"])
                         if result[0] == True:
                             result = result[1]
@@ -298,21 +302,26 @@ class shutdownHandler():
         self.dataServerListener.stop()
         self.mqttHandler.join()
         self.dataServerListener.join()
-        self.optimizeSQL(dataProxy = dataProxyHandler, reason = True)
+        self.optimizeSQL(reason = True)
         return
 
-    def optimizeSQL(self, dataProxy, reason):
+    def optimizeSQL(self, reason, oneTime = False, lastTime = None):
         try:
-            firstTime = datetime.datetime.now() + datetime.timedelta(hours = -1)
-            lastTime = firstTime + datetime.timedelta(hours = +1)
-            dataProxy.summarizeData(firstTime = firstTime, lastTime = lastTime, skipCheck = False)
+            if oneTime == False:
+                firstTime = datetime.datetime.now() + datetime.timedelta(hours = -1)
+                lastTime = firstTime + datetime.timedelta(hours = +1)
+            else:
+                groups = re.match(pattern = r"([0-9]{4})\-([0-9]{2})\-([0-9]{2})\ ([0-9]{2})\:([0-9]{2})\:([0-9]{2})", string = lastTime)
+                lastTime = datetime.datetime(year = int(groups.group(1)), month = int(groups.group(2)), day = int(groups.group(3)), hour = int(groups.group(4)), minute = int(groups.group(5)), second = int(groups.group(6)), microsecond = 123456)
+                firstTime = lastTime + datetime.timedelta(hours = -1)
+            self.dataProxyHandler.summarizeData(firstTime = firstTime, lastTime = lastTime, skipCheck = False)
             if reason == True:
                 firstTime = firstTime + datetime.timedelta(hours = +1)
                 lastTime = lastTime + datetime.timedelta(hours = +1)
-                dataProxy.summarizeData(firstTime = firstTime, lastTime = lastTime, skipCheck = False)
+                self.dataProxyHandler.summarizeData(firstTime = firstTime, lastTime = lastTime, skipCheck = False)
             
-            if self.serverRunning == True:
-                self.optimizingThread = threading.Timer(interval = 3600, function = self.optimizeSQL, args = [dataProxyHandler, False])
+            if self.serverRunning == True and oneTime == False:
+                self.optimizingThread = threading.Timer(interval = 3600, function = self.optimizeSQL, args = [False])
                 self.optimizingThread.start()
         except Exception as reason:
             logging.error(str(reason))
