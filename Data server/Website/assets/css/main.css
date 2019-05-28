@@ -3325,7 +3325,7 @@ input, select, textarea {
 	.graphNav .option
 	{
 		width: 25%;
-		height: 400px;
+		height: 300px;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
