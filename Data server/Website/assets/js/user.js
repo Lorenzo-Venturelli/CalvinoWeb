@@ -236,6 +236,16 @@ class Graph{
             }
         }
     }
+
+    checkElement(sensorNumber, dataType){
+        if(sensorNumber in this.graphData){
+            if(dataType in this.graphData[sensorNumber]){
+                return true;
+            }
+        }
+
+        return false;
+    }
 }
 
 var chart = new Graph();
@@ -320,11 +330,19 @@ function GDrequest(){
             var firstTime = Fdata + " " + Ftime + ":00";
             var lastTime = Ldata + " " + Ltime + ":00";
 
-            if(Date.parse(lastTime) > Date.parse(firstTime) && Date.parse(lastTime) < currentTime){
-                sendGDrequest(sensorNumber, dataType, firstTime, lastTime);
+            if(Date.parse(lastTime) > Date.parse(firstTime)){
+                if(Date.parse(lastTime) < currentTime){
+                    sendGDrequest(sensorNumber, dataType, firstTime, lastTime);
+                }
+                else{
+                    window.alert("La data di fine deve essere antecedente alla data attuale!")
+                    chart.updateReason.pop()
+                }
+                
             }
             else{
                 window.alert("La data di inizio deve essere antecedente a quella di fine!")
+                chart.updateReason.pop()
             }  
         }
         else if(chart.updateReason[0] == 2 && chart.initializated == true){
@@ -335,7 +353,12 @@ function GDrequest(){
             var firstTime = chart.firstTime;
             var lastTime = chart.lastTime;
 
-            sendGDrequest(sensorNumber, dataType, firstTime, lastTime);
+            if(chart.checkElement(sensorNumber, dataType) == false){
+                sendGDrequest(sensorNumber, dataType, firstTime, lastTime);
+            }
+            else{
+                chart.updateReason.pop()
+            }
         }
         else if (chart.updateReason[0] == 3 && chart.initializated == true){
             var x = document.getElementById("GSN");
@@ -351,6 +374,7 @@ function GDrequest(){
     }
     else{
         alert("Il server MQTT non è disponibile al momento");
+        chart.updateReason.pop()
     }
 
     return;

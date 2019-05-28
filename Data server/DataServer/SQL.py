@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-import queue, datetime,logging, threading
+import queue, datetime, logging, threading
 import SQL_lib
 from random import randint
 
@@ -19,7 +19,10 @@ class CalvinoDB():
         self.__summarizationOnGoing.set()
         self.__logger = logging.getLogger(name = "SQL")
         logging.basicConfig(filename = loggingFile, level = logging.INFO)
-        self.db = SQL_lib.MsSQL(server = self.__dbAddress, database = self.__dbName, username = self.__dbUser, password = self.__dbPass, logger = self.__logger)
+        try:
+            self.db = SQL_lib.MsSQL(server = self.__dbAddress, database = self.__dbName, username = self.__dbUser, password = self.__dbPass, logger = self.__logger)
+        except Exception as reason:
+            raise Exception(reason)
 
     def __randomN(self, digits):
         range_start = 10 **(digits - 1)
@@ -49,11 +52,16 @@ class CalvinoDB():
                 return queryResult
 
     def request(self, sensorNumber, dataType, firstTime, lastTime):
-        firstTime = "\'" + firstTime + "\'"
-        lastTime = "\'" + lastTime + "\'"
-        self.__notifyRequest(state = True)
-        queryResult = self.db.query('''SELECT * FROM ''' + str(dataType) + ''' WHERE Timestamp >= ''' + str(firstTime) + ''' AND Timestamp <= ''' + str(lastTime) + ''' AND ID_sensore = ''' + str(sensorNumber) + ''' ORDER BY [Timestamp]''')
-        self.__notifyRequest(state = False)
+        firstTime = "\'" + str(firstTime) + "\'"
+        lastTime = "\'" + str(lastTime) + "\'"
+
+        try:
+            self.__notifyRequest(state = True)
+            queryResult = self.db.query('''SELECT * FROM ''' + str(dataType) + ''' WHERE Timestamp >= ''' + str(firstTime) + ''' AND Timestamp <= ''' + str(lastTime) + ''' AND ID_sensore = ''' + str(sensorNumber) + ''' ORDER BY [Timestamp]''')
+            self.__notifyRequest(state = False)
+        except Exception:
+            queryResult = False
+
         if queryResult == True:         # Query succeded without output
             return True
         elif queryResult == False:      # Query failed
@@ -66,9 +74,15 @@ class CalvinoDB():
                 return (parsedResult)
 
     def remove(self, sensorNumber, dataType, firstTime, lastTime):
-        firstTime = "\'" + firstTime + "\'"
-        lastTime = "\'" + lastTime + "\'"
-        queryResult = self.db.query('''DELETE FROM ''' + str(dataType) + ''' WHERE Timestamp >= ''' + str(firstTime) + ''' AND Timestamp <= ''' + str(lastTime) + ''' AND ID_sensore = ''' + str(sensorNumber))
+        firstTime = "\'" + str(firstTime) + "\'"
+        lastTime = "\'" + str(lastTime) + "\'"
+
+        try:
+            self.__notifyRequest(state = True)
+            queryResult = self.db.query('''DELETE FROM ''' + str(dataType) + ''' WHERE Timestamp >= ''' + str(firstTime) + ''' AND Timestamp <= ''' + str(lastTime) + ''' AND ID_sensore = ''' + str(sensorNumber))
+            self.__notifyRequest(state = False)
+        except Exception:
+            queryResult = False
 
         if queryResult == True:         # Query succeded without output
             return True
@@ -92,10 +106,10 @@ class CalvinoDB():
                     mediumValue = 0
                     for record in many:
                         rowNumber += 1
-                        mediumValue = mediumValue + float(many[record][2])
+                        mediumValue = float(mediumValue) + float(many[record][2])
                     if rowNumber != 0:
-                        mediumValue = mediumValue / rowNumber
-                        mediumValue = round(number = mediumValue, ndigits = 2)
+                        mediumValue = float(mediumValue) / float(rowNumber)
+                        mediumValue = round(number = float(mediumValue), ndigits = 2)
                         result = self.remove(sensorNumber = sensorNumber, dataType = dataType, firstTime = firstTime, lastTime = lastTime)
                         if result == False:
                             status = (False, 4)
@@ -109,18 +123,22 @@ class CalvinoDB():
                         status = (True, 0)
                 except Exception as reason:
                     self.__logger.error("Error in summarization: " + str(reason))
+                    status(False, 6)
         return status
 
     def __notifyRequest(self, state):
-        if state == True:
-            self.__pauseInsert = True
-            return
-        elif state == False and self.__pauseInsert == True:
-            self.__pauseInsert = False
-            self.__flushQueue()
-            return
-        else:
-            return
+        try:
+            if state == True:
+                self.__pauseInsert = True
+                return
+            elif state == False and self.__pauseInsert == True:
+                self.__pauseInsert = False
+                self.__flushQueue()
+                return
+            else:
+                return
+        except Exception:
+            raise Exception
             
     def __flushQueue(self):
         while self.__queryQueue.empty() == False:
@@ -148,18 +166,21 @@ class CalvinoDB():
         return parsed
     
     def notifySummarization(self, status):
-        if status == True:
-            if self.__summarizationOnGoing.isSet() == True:
-                self.__summarizationOnGoing.clear()
-                return True
+        try:
+            if status == True:
+                if self.__summarizationOnGoing.isSet() == True:
+                    self.__summarizationOnGoing.clear()
+                    return True
+                else:
+                    return False
             else:
-                return False
-        else:
-            if self.__summarizationOnGoing.isSet() == True:
-                return False
-            else:
-                self.__summarizationOnGoing.set()
-                return True
+                if self.__summarizationOnGoing.isSet() == True:
+                    return False
+                else:
+                    self.__summarizationOnGoing.set()
+                    return True
+        except Exception:
+            raise Exception("Unknown error occurred while notifying summarization")
 
     def waitForSummarization(self):
         if self.__summarizationOnGoing.wait(timeout = 60) == True:

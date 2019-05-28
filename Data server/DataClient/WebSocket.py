@@ -51,8 +51,11 @@ class WsHandler(websocket.WebSocketHandler):
 			rtResponse = {"type" : "service", "status" : "down"}
 			self.dataServerStatus = negotiator.negotiationStatus()
 		else:
-			rtResponse = {"type" : "rtd", "temp" : temp, "light" : light, "pressure" : pressure, "highness" : highness}
-			rtResponse = json.dumps(rtResponse)
+			try:
+				rtResponse = {"type" : "rtd", "temp" : temp, "light" : light, "pressure" : pressure, "highness" : highness}
+				rtResponse = json.dumps(rtResponse)
+			except Exception:
+				return
 			
 		self.write_message(rtResponse)
 		return
@@ -71,8 +74,11 @@ class WsHandler(websocket.WebSocketHandler):
 			self.dataServerStatus = negotiator.negotiationStatus()
 		else:
 			if type(obtainedData) == dict:
-				gResponse = {"type" : "gr", "values" : obtainedData, "dataType" : dataType, "sensorNumber" : sensorNumber}
-				gResponse = json.dumps(gResponse)
+				try:
+					gResponse = {"type" : "gr", "values" : obtainedData, "dataType" : dataType, "sensorNumber" : sensorNumber}
+					gResponse = json.dumps(gResponse)
+				except Exception:
+					return
 			else:
 				return
 		
@@ -82,7 +88,6 @@ class WsHandler(websocket.WebSocketHandler):
 	def __requestData(self, sensorNumber, dataType, dataTime, reason):
 		global negotiator
 
-		print(str(sensorNumber) + " " + str(dataType) + " " + str(dataTime) )
 		request = {"SN": sensorNumber ,"DT": dataType,"FT": dataTime[1], "LT": dataTime[0], "RS" : reason}
 		if negotiator.insertRequest(request) == True:
 			response = negotiator.getResponse()	
@@ -95,10 +100,10 @@ class WsHandler(websocket.WebSocketHandler):
 			valueNumber = 0
 			value = 0
 			for item in data.keys():
-				value = value + float(data[item][2])
-				valueNumber = valueNumber + 1
+				value = float(value) + float(data[item][2])
+				valueNumber = float(valueNumber) + 1
 			if valueNumber != 0:
-				value = value / valueNumber
+				value = float(value) / float(valueNumber)
 				return round(value, 1)
 			else:
 				return False

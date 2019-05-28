@@ -96,26 +96,30 @@ class DataClient(threading.Thread):
         return
 
     def __rsaKeyHandShake(self):
-        self.clientSocket.sendall(str("199").encode())
-        answer = self.clientSocket.recv(1024)
-        if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
-            answer = answer.decode()
-            if answer == "200":
-                (self.myPubKey, self.myPrivKey) = encriptionHandler.generateRSA()
-                self.clientSocket.sendall(encriptionHandler.exportRSApub(self.myPubKey))
-                answer = self.clientSocket.recv(1024)
-                if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
-                    self.hisPubKey = answer
-                    self.clientSocket.sendall(str("200").encode())
+        try:
+            self.clientSocket.sendall(str("199").encode())
+            answer = self.clientSocket.recv(1024)
+            if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
+                answer = answer.decode()
+                if answer == "200":
+                    (self.myPubKey, self.myPrivKey) = encriptionHandler.generateRSA()
+                    self.clientSocket.sendall(encriptionHandler.exportRSApub(self.myPubKey))
                     answer = self.clientSocket.recv(1024)
-                    AESkey = encriptionHandler.RSAdecrypt(privkey = self.myPrivKey, secret = answer, skipDecoding = True)
-                    if AESkey != False:
-                        self.hisPubKey = encriptionHandler.AESdecrypt(key = AESkey, secret = self.hisPubKey, byteObject = True)
-                        self.hisPubKey = encriptionHandler.importRSApub(PEMfile = self.hisPubKey)
+                    if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
+                        self.hisPubKey = answer
                         self.clientSocket.sendall(str("200").encode())
-                        return True
-                    else:
-                        self.clientSocket.sendall(str("599").encode())
+                        answer = self.clientSocket.recv(1024)
+                        AESkey = encriptionHandler.RSAdecrypt(privkey = self.myPrivKey, secret = answer, skipDecoding = True)
+                        if AESkey != False:
+                            self.hisPubKey = encriptionHandler.AESdecrypt(key = AESkey, secret = self.hisPubKey, byteObject = True)
+                            self.hisPubKey = encriptionHandler.importRSApub(PEMfile = self.hisPubKey)
+                            self.clientSocket.sendall(str("200").encode())
+                            return True
+                        else:
+                            self.clientSocket.sendall(str("599").encode())
+        except Exception:
+            pass
+            
         self.logger.warning("Error occurred while negotiating RSA keys with " + str(self.address[0]) + " connection terminated for security reasons")
         return False
     
@@ -307,29 +311,62 @@ class shutdownHandler():
 
     def optimizeSQL(self, reason = False, oneTime = False, lastTime = None):
         try:
-            if oneTime == False:
-                firstTime = datetime.datetime.now() + datetime.timedelta(hours = -1)
-                lastTime = firstTime + datetime.timedelta(hours = +1)
-                self.dataProxyHandler.summarizeData(firstTime = firstTime, lastTime = lastTime, skipCheck = True)
-            else:
-                groups = re.match(pattern = r"([0-9]{4})\-([0-9]{2})\-([0-9]{2})\ ([0-9]{2})\:([0-9]{2})\:([0-9]{2})", string = lastTime)
-                lastTime = datetime.datetime(year = int(groups.group(1)), month = int(groups.group(2)), day = int(groups.group(3)), hour = int(groups.group(4)), minute = int(groups.group(5)), second = int(groups.group(6)), microsecond = 123456)
-                firstTime = lastTime + datetime.timedelta(hours = -1)
-                self.dataProxyHandler.summarizeData(firstTime = firstTime, lastTime = lastTime, skipCheck = False)
+            attemps = 0
+            result = False
+            while result == False and attemps < 3:
+                attemps = attemps + 1
+                if oneTime == False:
+                    try:
+                        firstTime = datetime.datetime.now() + datetime.timedelta(hours = int(-1))
+                        lastTime = firstTime + datetime.timedelta(hours = int(1))
+                        result = self.dataProxyHandler.summarizeData(firstTime = firstTime, lastTime = lastTime, skipCheck = True)
+                    except Exception as motivation:
+                        logging.error("Error while generating times 1 " + str(motivation))
+                        raise Exception
+                else:
+                    try:
+                        if(type(lastTime) == str):
+                            groups = re.match(pattern = r"([0-9]{4})\-([0-9]{2})\-([0-9]{2})\ ([0-9]{2})\:([0-9]{2})\:([0-9]{2})", string = lastTime)
+                            lastTime = datetime.datetime(year = int(groups.group(1)), month = int(groups.group(2)), day = int(groups.group(3)), hour = int(groups.group(4)), minute = int(groups.group(5)), second = int(groups.group(6)), microsecond = 123456)
+                        firstTime = lastTime + datetime.timedelta(hours = int(-1))
+                    except Exception as motivation:
+                        logging.error("Error while manipulating times 2 " + str(motivation))
+                        raise Exception
+
+                    try:
+                        result = self.dataProxyHandler.summarizeData(firstTime = firstTime, lastTime = lastTime, skipCheck = False)
+                    except Exception as motivation:
+                        logging.error("Error while calling summarization " + str(motivation))
+                        raise Exception
             
             if reason == True:
-                firstTime = firstTime + datetime.timedelta(hours = +1)
-                lastTime = lastTime + datetime.timedelta(hours = +1)
-                if oneTime == False:
-                    self.dataProxyHandler.summarizeData(firstTime = firstTime, lastTime = lastTime, skipCheck = True)
-                else:
-                    self.dataProxyHandler.summarizeData(firstTime = firstTime, lastTime = lastTime, skipCheck = False)
+                try:
+                    firstTime = firstTime + datetime.timedelta(hours = int(1))
+                    lastTime = lastTime + datetime.timedelta(hours = int(1))
+                except Exception as motivation:
+                    logging.error("Error while manipulating times 3 " + str(motivation))
+                    raise Exception
+
+                attemps = 0
+                result = False
+                while result == False and attemps < 3:
+                    attemps = attemps + 1
+                    try:
+                        if oneTime == False:
+                            result = self.dataProxyHandler.summarizeData(firstTime = firstTime, lastTime = lastTime, skipCheck = True)
+                        else:
+                            result = self.dataProxyHandler.summarizeData(firstTime = firstTime, lastTime = lastTime, skipCheck = False)
+                    except Exception as motivation:
+                        logging.error("Error while calling summarization " + str(motivation))
+                        raise Exception
             
             if self.serverRunning == True and oneTime == False:
                 self.optimizingThread = threading.Timer(interval = 3600, function = self.optimizeSQL)
                 self.optimizingThread.start()
-        except Exception as reason:
-            logging.error(str(reason))
+        except Exception:
+            if self.serverRunning == True and oneTime == False:
+                self.optimizingThread = threading.Timer(interval = 3600, function = self.optimizeSQL)
+                self.optimizingThread.start()
 
 def sysStop(signum, frame):
     safeExit.shutdown()

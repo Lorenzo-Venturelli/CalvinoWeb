@@ -29,35 +29,47 @@ def generateAES():
     return key
 
 def AESencrypt(key, raw, byteObject = False):
-    if byteObject == False:
-        raw = pad(raw)
-    else:
-        raw = raw.decode()
-        raw = pad(raw)
-        raw = raw.encode()
-    iv = Random.new().read(AES.block_size)
-    chiper = AES.new(key, AES.MODE_CBC, iv)
-    secret = base64.b64encode(iv + chiper.encrypt(raw))
+    try:
+        if byteObject == False:
+            raw = pad(raw)
+        else:
+            raw = raw.decode()
+            raw = pad(raw)
+            raw = raw.encode()
+        iv = Random.new().read(AES.block_size)
+        chiper = AES.new(key, AES.MODE_CBC, iv)
+        secret = base64.b64encode(iv + chiper.encrypt(raw))
+    except Exception:
+        secret = None
+
     return secret
 
 def AESdecrypt(key, secret, byteObject = False):
-    secret = base64.b64decode(secret)
-    iv = secret[:AES.block_size]
-    cipher = AES.new(key, AES.MODE_CBC, iv)
-    raw = cipher.decrypt(secret[AES.block_size:])
-    if byteObject == False:
-        raw = unpad(raw)
-        raw = raw.decode()
-    else:
-        raw = raw.decode()
-        raw = unpad(raw)
-        raw = raw.encode()
+    try:
+        secret = base64.b64decode(secret)
+        iv = secret[:AES.block_size]
+        cipher = AES.new(key, AES.MODE_CBC, iv)
+        raw = cipher.decrypt(secret[AES.block_size:])
+        if byteObject == False:
+            raw = unpad(raw)
+            raw = raw.decode()
+        else:
+            raw = raw.decode()
+            raw = unpad(raw)
+            raw = raw.encode()
+    except Exception:
+        raw = None
+
     return raw
 
 def RSAencrypt(pubkey, raw):
-    if type(raw) is not bytes:
-        raw = raw.encode('UTF-8')
-    secret = rsa.encrypt(message = raw, pub_key = pubkey)
+    try:
+        if type(raw) is not bytes:
+            raw = raw.encode('UTF-8')
+        secret = rsa.encrypt(message = raw, pub_key = pubkey)
+    except Exception:
+        secret = None
+        
     return secret
 
 def RSAdecrypt(privkey, secret, skipDecoding = False):

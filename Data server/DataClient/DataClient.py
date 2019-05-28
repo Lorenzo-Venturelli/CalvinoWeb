@@ -24,30 +24,34 @@ class DataRequest(threading.Thread):
         return
 
     def __rsaHandShake(self):
-        answer = self.clientSocket.recv(1024)
-        if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
-            answer = answer.decode()
-            if answer == "199":
-                self.clientSocket.sendall(str("200").encode())
-                answer = self.clientSocket.recv(1024)
-                if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
-                    self.hisPubkey = encriptionHandler.importRSApub(PEMfile = answer)
-                    (self.myPubKey, self.myPrivKey) = encriptionHandler.generateRSA()
-                    AESkey = encriptionHandler.generateAES()
-                    AESsecret = encriptionHandler.AESencrypt(key = AESkey, raw = encriptionHandler.exportRSApub(pubkey = self.myPubKey), byteObject = True)
-                    RSAsecret = encriptionHandler.RSAencrypt(pubkey = self.hisPubkey, raw = AESkey)
-                    self.clientSocket.sendall(AESsecret)
+        try:
+            answer = self.clientSocket.recv(1024)
+            if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
+                answer = answer.decode()
+                if answer == "199":
+                    self.clientSocket.sendall(str("200").encode())
                     answer = self.clientSocket.recv(1024)
                     if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
-                        answer = answer.decode()
-                        if answer == "200":
-                            self.clientSocket.sendall(RSAsecret)
-                            answer = self.clientSocket.recv(1024)
-                            if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
-                                answer = answer.decode()
-                                if answer == "200":
-                                    self.__logger.info("RSA handshake succeded")
-                                    return True
+                        self.hisPubkey = encriptionHandler.importRSApub(PEMfile = answer)
+                        (self.myPubKey, self.myPrivKey) = encriptionHandler.generateRSA()
+                        AESkey = encriptionHandler.generateAES()
+                        AESsecret = encriptionHandler.AESencrypt(key = AESkey, raw = encriptionHandler.exportRSApub(pubkey = self.myPubKey), byteObject = True)
+                        RSAsecret = encriptionHandler.RSAencrypt(pubkey = self.hisPubkey, raw = AESkey)
+                        self.clientSocket.sendall(AESsecret)
+                        answer = self.clientSocket.recv(1024)
+                        if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
+                            answer = answer.decode()
+                            if answer == "200":
+                                self.clientSocket.sendall(RSAsecret)
+                                answer = self.clientSocket.recv(1024)
+                                if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
+                                    answer = answer.decode()
+                                    if answer == "200":
+                                        self.__logger.info("RSA handshake succeded")
+                                        return True
+        except Exception:
+            pass
+
         self.__logger.error("Error occurred while negotiating RSA keys with Data Server. Connection closed for security reasons")
         return False
 
@@ -195,24 +199,30 @@ class DataRequest(threading.Thread):
         return data  
 
     def insertRequest(self, request):
-        if self.running == True:
-            if type(request) is dict:
-                keys = request.keys()
-                if "SN" in keys and "DT" in keys and "FT" in keys and "LT" in keys:
-                    self.reaquestQueue.put(request)
-                    return True
+        try:
+            if self.running == True:
+                if type(request) is dict:
+                    keys = request.keys()
+                    if "SN" in keys and "DT" in keys and "FT" in keys and "LT" in keys:
+                        self.reaquestQueue.put(request)
+                        return True
+                    else:
+                        return False
                 else:
                     return False
             else:
                 return False
-        else:
+        except Exception:
             return False
 
     def getResponse(self):
-        if self.running == True:
-            response = self.responseQueue.get()
-            return response
-        else:
+        try:
+            if self.running == True:
+                response = self.responseQueue.get()
+                return response
+            else:
+                return False
+        except Exception:
             return False
 
 class connectionNegotiator(threading.Thread):
@@ -276,4 +286,4 @@ class connectionNegotiator(threading.Thread):
                     self.__negotiationEvent.clear()
                     time.sleep(60)
             except Exception:
-                pass
+                continue

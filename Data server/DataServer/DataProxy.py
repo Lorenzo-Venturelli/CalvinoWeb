@@ -1,12 +1,6 @@
 #!/usr/bin/python3
-import threading
-import socket
-import time
-import json
-import re
-import logging
+import threading, socket, time, json, re, logging, datetime
 import SQL
-import datetime
 
 # This class provide a proxy interface between SQL handler class and others classes.
 # This class also provide automatic parsing processes for data in both direction to
@@ -17,8 +11,6 @@ class dataProxy():
         self.SQLProxy = SQLProxy
         self.lastData = dict()
         self.syncEvents = syncEvents
-        self.proxyLock = lock
-        self.proxy = proxy
         self.__lastSumm = datetime.datetime.now()
         self.__logger = logging.getLogger(name = "DataProxy")
         logging.basicConfig(filename = loggingFile, level = logging.INFO)
@@ -40,7 +32,6 @@ class dataProxy():
                 if result == False:
                     return (False, 3)
                 else:
-                    self.__notifyUpdate(sensorNumber = sensorNumber, dataType = dataType, dataValue = dataValue)
                     return (True, 0)
         else:
             return (False, 1)
@@ -67,46 +58,45 @@ class dataProxy():
         if firstTime >= lastTime:
             return False
         elif self.__lastSumm <= lastTime or skipCheck == True:
-            self.__lastSumm = datetime.datetime.now()
             firstTime = str(firstTime)[:-7]
             match = re.match(pattern = r"([0-9]{4}\-[0-9]{2}\-[0-9]{2}\ [0-9]{2})\:[0-9]{2}\:[0-9]{2}", string = firstTime)
-            firstTime = match.group(1) + ":00:00"
+            firstTime = str(match.group(1)) + ":00:00"
+
             lastTime = str(lastTime)[:-7]
             match = re.match(pattern = r"([0-9]{4}\-[0-9]{2}\-[0-9]{2}\ [0-9]{2})\:[0-9]{2}\:[0-9]{2}", string = lastTime)
-            lastTime = match.group(1) + ":00:00"
+            lastTime = str(match.group(1)) + ":00:00"
 
-            self.SQLProxy.notifySummarization(status = True)
-            for sensorNumber in self.lastData.keys():
-                for dataType in self.lastData[sensorNumber].keys():
-                    result = [None, None]
-                    attemps = 0
-                    while result[0] != True and attemps < 3:
-                        attemps = attemps + 1
-                        result = self.SQLProxy.summarize(sensorNumber = sensorNumber, dataType = dataType, firstTime = firstTime, lastTime = lastTime, skipCheck = True)
-                        if result[0] == False:
-                            if result[1] == 1:
-                                self.__logger.warning("Impossible to summarize values if firstTime is bigger than lastTime")
-                            elif result[1] == 2:
-                                self.__logger.warning("No data to summarize for sensor " + str(sensorNumber) + " of type " + str(dataType) + " between " + str(firstTime) + " and " + str(lastTime))
-                            elif result[1] == 3:
-                                self.__logger.warning("Unexpected query error while requesting data to summarize")
-                            elif result[1] == 4:
-                                self.__logger.warning("Unexpected query error while removing summarized data")
-                            elif result[1] == 5:
-                                self.__logger.warning("Unexpected query error while inserting new summarized data")
-            self.SQLProxy.notifySummarization(status = False)
-            self.__logger.info("Data optimized for interval " + str(firstTime) + " " + str(lastTime))
-            return True
+            try:
+                self.SQLProxy.notifySummarization(status = True)
+                for sensorNumber in self.lastData.keys():
+                    for dataType in self.lastData[sensorNumber].keys():
+                        result = [None, None]
+                        attemps = 0
+                        while result[0] != True and attemps < 3:
+                            attemps = attemps + 1
+                            result = self.SQLProxy.summarize(sensorNumber = sensorNumber, dataType = dataType, firstTime = firstTime, lastTime = lastTime, skipCheck = True)
+                            if result[0] == False:
+                                if result[1] == 1:
+                                    self.__logger.warning("Impossible to summarize values if firstTime is bigger than lastTime")
+                                elif result[1] == 2:
+                                    self.__logger.warning("No data to summarize for sensor " + str(sensorNumber) + " of type " + str(dataType) + " between " + str(firstTime) + " and " + str(lastTime))
+                                elif result[1] == 3:
+                                    self.__logger.warning("Unexpected query error while requesting data to summarize")
+                                elif result[1] == 4:
+                                    self.__logger.warning("Unexpected query error while removing summarized data")
+                                elif result[1] == 5:
+                                    self.__logger.warning("Unexpected query error while inserting new summarized data")
+                                elif result[1] == 6:
+                                    self.__logger.warning("Unexpected query error while while sumarizing data")
+                self.SQLProxy.notifySummarization(status = False)
+                self.__logger.info("Data optimized for interval " + str(firstTime) + " " + str(lastTime))
+                self.__lastSumm = datetime.datetime.now()
+                return True
+            except Exception:
+                self.__logger.error("Unknown error occurred while summarizing")
+                return False
         else:
             return False
-
-
-    def __notifyUpdate(self, sensorNumber, dataType, dataValue):
-        self.proxyLock.acquire()
-        self.proxy = [sensorNumber, dataType, dataValue]
-        self.proxyLock.release()
-        self.syncEvents.set()
-        return
 
     def __DBinsert(self, sensorNumber, dataType, dataValue):
         result = self.SQLProxy.insert(sensorNumber = sensorNumber, dataType = dataType, value = dataValue, timestamp = None)
