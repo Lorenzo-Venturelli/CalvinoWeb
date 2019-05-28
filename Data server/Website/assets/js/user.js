@@ -305,6 +305,7 @@ function changeGraph(reason){
 
 function GDrequest(){
     if(remoteServerStatus == true){
+        var currentTime = new Date()
         if(chart.updateReason[0] == 1){
             var x = document.getElementById("GSN");
             var sensorNumber = x.options[x.selectedIndex].value;
@@ -318,14 +319,13 @@ function GDrequest(){
             var firstTime = Fdata + " " + Ftime + ":00";
             var lastTime = Ldata + " " + Ltime + ":00";
 
-            if(Date.parse(lastTime) > Date.parse(firstTime)){
+            if(Date.parse(lastTime) > Date.parse(firstTime) && Date.parse(lastTime) < currentTime){
                 sendGDrequest(sensorNumber, dataType, firstTime, lastTime);
+                chart.updateReason.pop()
             }
             else{
                 window.alert("La data di inizio deve essere antecedente a quella di fine!")
-            }
-        
-            
+            }  
         }
         else if(chart.updateReason[0] == 2 && chart.initializated == true){
             var x = document.getElementById("GSN");
