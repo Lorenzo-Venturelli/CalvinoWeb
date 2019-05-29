@@ -2,7 +2,7 @@
     "brkAdr" : "broker.shiftr.io",
     "brkUsername" : "calvino00",
     "brkPassword" : "0123456789",
-    "sqlAdr" : "51.77.151.199",
+    "sqlAdr" : "localhost",
     "sqlUsername" : "SA",
     "sqlPassword" : "Fermi3f27",
     "sqlName" : "CalvinoDB",

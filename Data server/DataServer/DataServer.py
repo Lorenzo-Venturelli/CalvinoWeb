@@ -135,10 +135,7 @@ class DataClient(threading.Thread):
         return (AESsecret, RSAsecret)
     
     def run(self):
-        if self.address[0] == "127.0.0.1":
-            self.disconnect()
-            return
-
+        
         result = self._DataClient__rsaKeyHandShake()
         if result == False:
             self.disconnect()

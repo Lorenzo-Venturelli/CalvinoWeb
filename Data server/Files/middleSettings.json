@@ -1,7 +1,7 @@
 {
-    "dataServerAddress" : "51.77.151.199",
+    "dataServerAddress" : "localhost",
     "dataServerPort" : "2000",
-    "middleServerAddress" : "127.0.0.1",
+    "middleServerAddress" : "localhost",
     "middleServerPort" : "8888",
     "logPath" : "/home/lorenzo/Calvino/Files/logs/"
 }
