@@ -4,6 +4,8 @@ var currentRTSN = document.getElementById("RTSN");
 currentRTSN = currentRTSN.options[currentRTSN.selectedIndex].text;
 var pingInterval = null
 var remoteServerStatus = true
+var requestEvent = document.createEvent("Event");
+requestEvent.initEvent("update");
 
 class Graph{
     constructor(){
@@ -247,8 +249,13 @@ class Graph{
         return false;
     }
 }
-
 var chart = new Graph();
+
+document.addEventListener("update", function(e){
+    if(chart.updateReason.length > 0){
+        GDrequest();
+    }
+});
 
 function setDefault(){
     var today = new Date();
@@ -293,25 +300,12 @@ function RTupdate(temp, light, pressure, highness){
 }
 
 function changeGraph(reason){
-    while(chart.updateReason.length > 1){}
-    if(reason == 1){
-        chart.updateReason.push(1);
+    chart.updateReason.push(reason);
+    if(chart.updateReason.length == 1){
         GDrequest();
-        return;
     }
-    else if(reason == 2){
-        chart.updateReason.push(2);
-        GDrequest();
-        return;
-    }
-    else if(reason == 3){
-        chart.updateReason.push(3);
-        GDrequest();
-        return;
-    }
-    else{
-        return;
-    }
+
+    return
 }
 
 function GDrequest(){
@@ -411,6 +405,8 @@ function buildGraph(graphData, dataType, sensorNumber){
     else{
         chart.updateReason.pop();
     }
+
+    document.dispatchEvent(requestEvent);
     
     return;
 }
