@@ -3325,11 +3325,16 @@ input, select, textarea {
 	.graphNav .option
 	{
 		width: 25%;
-		height: 300px;
+		height: 250px;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
 		text-align: center;
+	}
+
+	.fixedButton{
+		height: 55px;
+		width: 200px;
 	}
 
 	.graphNav .option h1
@@ -3339,14 +3344,15 @@ input, select, textarea {
 
 	.graphNav .option select
 	{
-		width: 80%;
 		text-align: center;
 		margin: 0 auto;
+		height: 55px;
+		width: 200px;
 	}
 	.graphNav input{
-		width: 80%;
 		margin-bottom: 20px;
-		height: 62.5px;
+		height: 55px;
+		width: 200px;
 		text-align: center;
 		border: none;
 		border: 1px solid #DADADA;
@@ -3355,7 +3361,8 @@ input, select, textarea {
 	}
 	.graphNav a{
 		margin-top: 20px;
-		width: 80%;
+		height: 55px;
+		width: 200px;
 	}
 
 /*	Graph contenent	 */
@@ -3374,6 +3381,47 @@ input, select, textarea {
 		width: 400px;
 	}
 
+
+	@media screen and (max-width: 1680px) {
+		.fixedButton{
+			height: 45px;
+			width: 150px;
+			padding: 0;
+		}
+
+		.graphNav .option{
+			width: 25%;
+			height: 250px;
+		}
+
+		.graphNav .option select{
+			height: 45px;
+			width: 150px;
+		}
+
+		.graphNav input{
+			height: 45px;
+			width: 150px;
+		}
+		
+		.graphNav a{
+		height: 45px;
+		width: 150px;
+		padding: 0;
+		}
+	}
+
+	/*@media screen and (max-width: 1280px) {
+
+
+
+	}
+
+	@media screen and (max-width: 360px) {
+
+
+
+	}*/
 /* Main */
 
 	#main {
