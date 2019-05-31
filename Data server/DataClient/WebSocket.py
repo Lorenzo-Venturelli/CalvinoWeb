@@ -168,7 +168,7 @@ class frontEndHandler(threading.Thread):
 		self.ioLoop = None
 		self.__websitePath = websitePath
 		self.__logger = logging.getLogger(name = "Tornado")
-		logging.basicConfig(filename = loggingFile, level = logging.INFO)
+		logging.basicConfig(filename = loggingFile, level = logging.DEBUG)
 		threading.Thread.__init__(self, name = "Tornado thread", daemon = False)
 
 	def run(self):

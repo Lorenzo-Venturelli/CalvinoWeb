@@ -66,7 +66,7 @@ if __name__ == "__main__":
             loggingFile = loggingFile + "MiddleServer.log"
         else:
             loggingFile = loggingFile + "/MiddleServer.log"
-        logging.basicConfig(filename = loggingFile, level = logging.INFO)
+        logging.basicConfig(filename = loggingFile, level = logging.DEBUG)
     except KeyError:
         print("Fatal Error: Logging file not found in settings. Unable to start")
 

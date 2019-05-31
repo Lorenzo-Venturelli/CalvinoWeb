@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-import pymysql, pymssql,threading, logging
+import pymysql, pymssql,threading, logging, time
 
 # Those class provide low level interface for execute query on DB (MySQL and MsSQL)
 # Those class must be used through SQL module
@@ -51,6 +51,16 @@ class MsSQL():
             except Exception as reason:
                 self.__logger.error("Database transaction error")
                 self.__logger.info("Reason: " + str(reason))
+                try:
+                    self.__cursor.fetchall()
+                except Exception as reason:
+                    pass
+                try:
+                    self.__lock.release()
+                except RuntimeError:
+                    pass
+                except Exception:
+                    pass
                 return False
             try:
                 self.__lock.release()

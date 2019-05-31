@@ -14,7 +14,7 @@ class DataRequest(threading.Thread):
         self.reaquestQueue = queue.Queue()
         self.responseQueue = queue.Queue()
         self.__logger = logging.getLogger(name = "Data Client")
-        logging.basicConfig(filename = loggingFile, level = logging.INFO)
+        logging.basicConfig(filename = loggingFile, level = logging.DEBUG)
         threading.Thread.__init__(self, name = "Data Client Thread", daemon = True)
 
     def disconnect(self):
@@ -70,7 +70,7 @@ class DataRequest(threading.Thread):
         try:
             self.clientSocket.connect((self.serverAddress, self.serverPort))
         except Exception:
-            self.__logger.critical("Unable to connect to Data Server")
+            self.__logger.warning("Unable to connect to Data Server")
             self.disconnect()
 
         if self.running == True:
@@ -98,6 +98,7 @@ class DataRequest(threading.Thread):
                 self.responseQueue.put(False)
             else:
                 self.responseQueue.put(result)
+
 
         self.__logger.info("Data client disconnected")
 
@@ -233,7 +234,7 @@ class connectionNegotiator(threading.Thread):
         self.__negotiationEvent = threading.Event()
         self.__loggingFile = loggingFile
         self.__logger = logging.getLogger(name = "Negotiator")
-        logging.basicConfig(filename = self.__loggingFile, level = logging.INFO)
+        logging.basicConfig(filename = self.__loggingFile, level = logging.DEBUG)
         self.__keepRunning = True
         self.__connectionNegotiated = False
         self.__DataClient = None

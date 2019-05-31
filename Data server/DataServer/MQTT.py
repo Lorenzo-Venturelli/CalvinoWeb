@@ -25,7 +25,7 @@ class MQTTclient(threading.Thread):
         self.dataProxy = dataProxy
         self.dataProxyLock = threading.Lock()
         self.__logger = logging.getLogger(name = "MQTT")
-        logging.basicConfig(filename = loggingFile, level = logging.INFO)
+        logging.basicConfig(filename = loggingFile, level = logging.DEBUG)
         threading.Thread.__init__(self, name = "MQTT Thread", daemon = True)
 
     def run(self):
@@ -72,22 +72,25 @@ class MQTTclient(threading.Thread):
         if match == None:
             self.__logger.warning("Regex could not match message contenent")
         else:
-            sensorNumber = str(match.group(1))
-            dataType = str(match.group(2))
-            dataValue = str(message.payload.decode("utf-8"))
-            result = self.dataProxy.lastDataUpdate(sensorNumber = int(sensorNumber), dataType = dataType, dataValue = dataValue)
-            if result[0] == True:
-                return
-            else:
-                if result[1] == 1:
-                    self.__logger.warning("Received data for sensor " + str(sensorNumber) + " that do not exist.")
-                elif result[1] == 2:
-                    self.__logger.warning("Received data of type " + str(dataType) + " for sensor " + str(sensorNumber) + ". This sensor has not this data type")
-                elif result[1] == 3:
-                    self.__logger.warning("Unknown SQL error occured")
+            try:
+                sensorNumber = str(match.group(1))
+                dataType = str(match.group(2))
+                dataValue = str(message.payload.decode("utf-8"))
+                result = self.dataProxy.lastDataUpdate(sensorNumber = int(sensorNumber), dataType = dataType, dataValue = dataValue)
+                if result[0] == True:
+                    return
+                else:
+                    if result[1] == 1:
+                        self.__logger.warning("Received data for sensor " + str(sensorNumber) + " that do not exist.")
+                    elif result[1] == 2:
+                        self.__logger.warning("Received data of type " + str(dataType) + " for sensor " + str(sensorNumber) + ". This sensor has not this data type")
+                    elif result[1] == 3:
+                        self.__logger.warning("Unknown SQL error occured")
 
-                self.__logger.warning("This data are lost forever")
-                return
+                    self.__logger.warning("This data are lost forever")
+                    return
+            except Exception as reason:
+                self.__logger.warning("Error occurred while handeling an incoming message")
         
 
     def __subscribeCallback(self, client, userdata, mid, granted_qos):

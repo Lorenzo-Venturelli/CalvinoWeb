@@ -63,6 +63,8 @@ class DataServerAccepter(threading.Thread):
         for client in deathClient:
             del self.connectedClient[client]
 
+        logging.debug(str(connectedClient))
+
         return
 
     def stop(self):
@@ -91,6 +93,7 @@ class DataClient(threading.Thread):
         threading.Thread.__init__(self, name = "Data Client " + str(address[0]), daemon = True)
 
     def disconnect(self):
+        self.logger.debug("Disconnesso")
         self.clientConnected = False
         self.clientSocket.close()
         return
@@ -143,6 +146,7 @@ class DataClient(threading.Thread):
             while self.clientConnected == True:
                 try:
                     request = self.getMessage(sock = self.clientSocket)         # Get incoming request pt.1
+                    self.logger.debug("Richiesta in arrivo")
                     if request != None and request != 0 and request != '' and request != str.encode(''):
                         RSAsecret = request                                     # First message of incoming request is the RSA secret
                         self.sendMessage(sock = self.clientSocket, message = str("200").encode())          # Send ACK 1
@@ -156,13 +160,16 @@ class DataClient(threading.Thread):
                     else:
                         self.disconnect()
                         break
-                except ConnectionResetError:
+                except ConnectionResetError as x:
+                    self.logger.debug("Errore nella ricezione della richiesta: " + str(x))
                     self.disconnect()
                     break
-                except ConnectionAbortedError:
+                except ConnectionAbortedError as x:
+                    self.logger.debug("Errore nella ricezione della richiesta: " + str(x))
                     self.disconnect()
                     break
-                except ConnectionError:
+                except ConnectionError as x:
+                    self.logger.debug("Errore nella ricezione della richiesta: " + str(x))
                     self.disconnect()
                     break
                 except Exception as test:
@@ -170,38 +177,50 @@ class DataClient(threading.Thread):
                     self.logger.info(str(test))
                     continue
 
-                request = self._DataClient__decryptMessage(AESsecret = AESsecret, RSAsecret = RSAsecret)
                 try:
+                    request = self._DataClient__decryptMessage(AESsecret = AESsecret, RSAsecret = RSAsecret)
                     request = json.loads(request)
                 except json.JSONDecodeError:
                     self.logger.warning("Error: Received corrupted request from host " + str(self.address[0]))
                     continue
-                if "SN" in request.keys() and "DT" in request.keys() and "FT" in request.keys() and "LT" in request.keys() and "RS" in request.keys():
-                    if request["SN"] != None and request["DT"] != None and request["FT"] != None and request["LT"] != None and request["RS"] != None:
+                except Exception:
+                    self.logger.warning("Error: Received corrupted request from host " + str(self.address[0]))
+                    continue
 
-                        if request["RS"] == True:
-                            safeExit.optimizeSQL(reason = True, oneTime = True, lastTime = request["LT"])
+                try:
+                    if "SN" in request.keys() and "DT" in request.keys() and "FT" in request.keys() and "LT" in request.keys() and "RS" in request.keys():
+                        if request["SN"] != None and request["DT"] != None and request["FT"] != None and request["LT"] != None and request["RS"] != None:
 
-                        result = self.dataProxy.requestData(sensorNumber = request["SN"], dataType = request["DT"], firstTime = request["FT"], lastTime = request["LT"])
-                        if result[0] == True:
-                            result = result[1]
-                            status = "200"
+                            if request["RS"] == True:
+                                safeExit.optimizeSQL(reason = True, oneTime = True, lastTime = request["LT"])
+
+                            result = self.dataProxy.requestData(sensorNumber = request["SN"], dataType = request["DT"], firstTime = request["FT"], lastTime = request["LT"])
+                            if result[0] == True:
+                                result = result[1]
+                                status = "200"
+                            else:
+                                if result[1] == 1 or result[1] == 2 or result[1] == 3:
+                                    status = "499"
+                                elif result[1] == 4 or result[1] == 5 or result[1] == 5:
+                                    status = "399"
+                                result = dict()
                         else:
-                            if result[1] == 1 or result[1] == 2 or result[1] == 3:
-                                status = "499"
-                            elif result[1] == 4 or result[1] == 5 or result[1] == 5:
-                                status = "399"
                             result = dict()
+                            status = "599"
                     else:
                         result = dict()
                         status = "599"
-                else:
-                    result = dict()
-                    status = "599"
+                except Exception:
+                    self.logger.error("Error occurred while processing a request form  " + str(self.address[0]))
+                    continue
 
-                resultJSON = json.dumps(result)
-                status = status.encode()
-                (resultJSON, key) = self._DataClient__generateEncryptedMessage(raw = resultJSON)
+                try: 
+                    resultJSON = json.dumps(result)
+                    status = status.encode()
+                    (resultJSON, key) = self._DataClient__generateEncryptedMessage(raw = resultJSON)
+                except Exception:
+                    self.logger.error("Error occurred while encrypting an answer for " + str(self.address[0]))
+                    continue
                 
                 try:
                     self.sendMessage(sock = self.clientSocket, message = key)                   # Send RSA secret
@@ -225,18 +244,23 @@ class DataClient(threading.Thread):
                     else:
                         self.disconnect()
                         break
-                except ConnectionResetError:
+                except ConnectionResetError as x:
+                    self.logger.debug("Errore nell'invio della risposta " + str(x))
                     self.disconnect()
                     break
-                except ConnectionAbortedError:
+                except ConnectionAbortedError as x:
+                    self.logger.debug("Errore nell'invio della risposta " + str(x))
                     self.disconnect()
                     break
-                except ConnectionError:
+                except ConnectionError as x:
+                    self.logger.debug("Errore nell'invio della risposta " + str(x))
                     self.disconnect()
                     break
                 except Exception:
-                    self.logger.warning("Error: Unknown comunication error occurred with client " + str(self.address[0]))
+                    self.logger.warning("Errore nell'invio della risposta " + str(x))
                     continue
+                self.logger.debug("Risposta inviata")
+
         
         self.logger.info("Client " + str(self.address[0]) + " disconnected")
         return
@@ -440,7 +464,7 @@ if __name__ == "__main__":
             loggingFile = loggingFile + "DataServer.log"
         else:
             loggingFile = loggingFile + "/DataServer.log"
-        logging.basicConfig(filename = loggingFile, level = logging.INFO)
+        logging.basicConfig(filename = loggingFile, level = logging.DEBUG)
     else:
         print("Critical Error: No Log Path is provided by settings file! Unable to start")
         quit()
