@@ -1846,7 +1846,6 @@ input, select, textarea {
 		font-weight: 300;
 		height: 2.75em;
 		line-height: 2.75em;
-		min-width: 9.25em;
 		padding: 0 1.5em;
 		text-align: center;
 		text-decoration: none;
@@ -3313,6 +3312,14 @@ input, select, textarea {
 		margin: 0;
 	}
 
+	@media screen and (max-width: 800px){
+		.rtcontainer{
+			align-content: center;
+			align-content: center;
+			flex-direction: column;
+		}
+	}
+
 /*	Graph-nav	*/
 	.graphNav
 	{
@@ -3386,11 +3393,9 @@ input, select, textarea {
 		.fixedButton{
 			height: 45px;
 			width: 150px;
-			padding: 0;
 		}
 
 		.graphNav .option{
-			width: 25%;
 			height: 250px;
 		}
 
@@ -3407,21 +3412,43 @@ input, select, textarea {
 		.graphNav a{
 		height: 45px;
 		width: 150px;
-		padding: 0;
 		}
 	}
 
-	/*@media screen and (max-width: 1280px) {
+	@media screen and (max-width: 800px) {
+		.fixedButton{
+			height: 35px;
+			width: 300px;
+		}
 
+		.graphNav .option select{
+			height: 35px;
+			width: 300px;
+		}
 
+		.graphNav input{
+			height: 35px;
+			width: 300px;
+		}
+		
+		.graphNav a{
+		height: 35px;
+		width: 300px;
+		}
+
+		.graphNav{
+			flex-direction: column;
+			align-content: center;
+			align-items: center;
+		}
+
+		.graphNav .option{
+			width: 100%;
+			height: 180px;
+		}
 
 	}
 
-	@media screen and (max-width: 360px) {
-
-
-
-	}*/
 /* Main */
 
 	#main {
