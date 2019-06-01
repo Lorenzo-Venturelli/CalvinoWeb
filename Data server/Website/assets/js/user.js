@@ -1,4 +1,4 @@
-var ws = new WebSocket("wss://tggstudio.eu/ws");
+var ws = new WebSocket("wss://meteo.tggstudio.eu/ws");
 
 var currentRTSN = document.getElementById("RTSN");
 currentRTSN = currentRTSN.options[currentRTSN.selectedIndex].text;
