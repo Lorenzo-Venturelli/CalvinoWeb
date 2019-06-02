@@ -13,7 +13,7 @@ class dataProxy():
         self.syncEvents = syncEvents
         self.__lastSumm = datetime.datetime.now()
         self.__logger = logging.getLogger(name = "DataProxy")
-        logging.basicConfig(filename = loggingFile, level = logging.DEBUG)
+        logging.basicConfig(filename = loggingFile, level = logging.INFO)
 
         for i in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
             self.lastData[i] = dict()

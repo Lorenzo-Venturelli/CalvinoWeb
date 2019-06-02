@@ -14,7 +14,7 @@ class DataRequest(threading.Thread):
         self.reaquestQueue = queue.Queue()
         self.responseQueue = queue.Queue()
         self.__logger = logging.getLogger(name = "Data Client")
-        logging.basicConfig(filename = loggingFile, level = logging.DEBUG)
+        logging.basicConfig(filename = loggingFile, level = logging.INFO)
         threading.Thread.__init__(self, name = "Data Client Thread", daemon = True)
 
     def disconnect(self):

@@ -12,38 +12,40 @@ except ImportError as missingImport:
 socketBinded = True
 safeExit = None
 
+# This class handle the incoming connections from Middle Server.
+# Every time a new connection is established, this class create and start a new Data Client istance.
 class DataServerAccepter(threading.Thread):
     def __init__(self, address, port, dataProxy, dataProxyLock, dataProxySyncEvent, logger):
-        self.serverAddress = address
-        self.serverPort = port
-        self.dataProxy = dataProxy
-        self.dataProxyLock = dataProxyLock
-        self.dataProxySyncEvent = dataProxySyncEvent
-        self.serverSocket = socket.socket(family = socket.AF_INET, type = socket.SOCK_STREAM)
-        self.serverSocket.bind((str(self.serverAddress), int(self.serverPort)))
+        self.__serverAddress = address
+        self.__serverPort = port
+        self.__dataProxy = dataProxy
+        self.__dataProxyLock = dataProxyLock
+        self.__dataProxySyncEvent = dataProxySyncEvent
+        self.__serverSocket = socket.socket(family = socket.AF_INET, type = socket.SOCK_STREAM)
+        self.__serverSocket.bind((str(self.__serverAddress), int(self.__serverPort)))
         self.__running = True
-        self.connectedClient = dict()
-        self.logger = logger
+        self.__connectedClient = dict()
+        self.__logger = logger
         threading.Thread.__init__(self, name = "Data Server Accepter Thread", daemon = False)
 
     def run(self):
-        self.serverSocket.listen(5)
+        self.__serverSocket.listen(5)
         while self.__running == True:
             try:
-                clientSocket, clientAddress = self.serverSocket.accept()
+                clientSocket, clientAddress = self.__serverSocket.accept()
             except socket.error():
-                self.logger.error("Unknown error occurred while a client tried to connect. Connection aborted")
+                self.__logger.error("Unknown error occurred while a client tried to connect. Connection aborted")
                 clientAddress = None
             
             if clientAddress != None:
                 try:
-                    clientThread = DataClient(address = clientAddress, clientSocket = clientSocket, dataProxy = self.dataProxy, dataProxyLock = self.dataProxyLock, dataProxySyncEvent = self.dataProxySyncEvent, logger = self.logger)
+                    clientThread = DataClient(address = clientAddress, clientSocket = clientSocket, dataProxy = self.__dataProxy, dataProxyLock = self.__dataProxyLock, dataProxySyncEvent = self.__dataProxySyncEvent, logger = self.__logger)
                     clientThread.start()
-                    self.connectedClient[str(clientAddress[0])] = clientThread
-                    self.logger.info("Client " + str(clientAddress[0]) + " connected")
+                    self.__connectedClient[str(clientAddress[0])] = clientThread
+                    self.__logger.info("Client " + str(clientAddress[0]) + " connected")
                 except Exception as reason:
-                    self.logger.error("Unhandled error occured while creating client thread for client " + str(clientAddress[0]))
-                    self.logger.info("Reason: " + str(reason))
+                    self.__logger.error("Unhandled error occured while creating client thread for client " + str(clientAddress[0]))
+                    self.__logger.info("Reason: " + str(reason))
                     clientSocket.close()
                     clientSocket = None
                     clientAddress = None
@@ -51,90 +53,89 @@ class DataServerAccepter(threading.Thread):
             self.__garbageCollector()
 
         self.__garbageCollector()
-        self.serverSocket.close()
+        self.__serverSocket.close()
         return
     
     def __garbageCollector(self):
         deathClient = []
-        for client in self.connectedClient.keys():
-            if self.connectedClient[client].clientConnected == False:
+        for client in self.__connectedClient.keys():
+            if self.__connectedClient[client].clientConnected == False:
                 deathClient.append(client)
         
         for client in deathClient:
-            del self.connectedClient[client]
-
-        logging.debug(str(connectedClient))
+            del self.__connectedClient[client]
 
         return
 
     def stop(self):
         self.__running = False
         fakeClient = socket.socket(family = socket.AF_INET, type = socket.SOCK_STREAM)
-        fakeClient.connect(("127.0.0.1", self.serverPort))
+        fakeClient.connect(("127.0.0.1", self.__serverPort))
 
-        for client in self.connectedClient:
-            self.connectedClient[client].disconnect()
+        for client in self.__connectedClient:
+            self.__connectedClient[client].disconnect()
 
         fakeClient.close()
         return
          
+# This class provide the comunication interface to handle the Middle Server connection.
 class DataClient(threading.Thread):
     def __init__(self, address, clientSocket, dataProxy, dataProxyLock, dataProxySyncEvent, logger):
-        self.address = address
-        self.clientSocket = clientSocket
-        self.dataProxy = dataProxy
-        self.dataProxyLock = dataProxyLock
-        self.dataProxySyncEvent = dataProxySyncEvent
-        self.clientConnected = True
-        self.myPubKey = None
-        self.myPrivKey = None
-        self.hisPubKey = None
-        self.logger = logger
+        self.__address = address
+        self.__clientSocket = clientSocket
+        self.__dataProxy = dataProxy
+        self.__dataProxyLock = dataProxyLock
+        self.__dataProxySyncEvent = dataProxySyncEvent
+        self.__clientConnected = True
+        self.__myPubKey = None
+        self.__myPrivKey = None
+        self.__hisPubKey = None
+        self.__logger = logger
         threading.Thread.__init__(self, name = "Data Client " + str(address[0]), daemon = True)
 
     def disconnect(self):
-        self.logger.debug("Disconnesso")
-        self.clientConnected = False
-        self.clientSocket.close()
+        self.__logger.debug("Disconnesso")
+        self.__clientConnected = False
+        self.__clientSocket.close()
         return
 
     def __rsaKeyHandShake(self):
         try:
-            self.clientSocket.sendall(str("199").encode())
-            answer = self.clientSocket.recv(1024)
+            self.__clientSocket.sendall(str("199").encode())
+            answer = self.__clientSocket.recv(1024)
             if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
                 answer = answer.decode()
                 if answer == "200":
-                    (self.myPubKey, self.myPrivKey) = encriptionHandler.generateRSA()
-                    self.clientSocket.sendall(encriptionHandler.exportRSApub(self.myPubKey))
-                    answer = self.clientSocket.recv(1024)
+                    (self.__myPubKey, self.__myPrivKey) = encriptionHandler.generateRSA()
+                    self.__clientSocket.sendall(encriptionHandler.exportRSApub(self.__myPubKey))
+                    answer = self.__clientSocket.recv(1024)
                     if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
-                        self.hisPubKey = answer
-                        self.clientSocket.sendall(str("200").encode())
-                        answer = self.clientSocket.recv(1024)
-                        AESkey = encriptionHandler.RSAdecrypt(privkey = self.myPrivKey, secret = answer, skipDecoding = True)
+                        self.__hisPubKey = answer
+                        self.__clientSocket.sendall(str("200").encode())
+                        answer = self.__clientSocket.recv(1024)
+                        AESkey = encriptionHandler.RSAdecrypt(privkey = self.__myPrivKey, secret = answer, skipDecoding = True)
                         if AESkey != False:
-                            self.hisPubKey = encriptionHandler.AESdecrypt(key = AESkey, secret = self.hisPubKey, byteObject = True)
-                            self.hisPubKey = encriptionHandler.importRSApub(PEMfile = self.hisPubKey)
-                            self.clientSocket.sendall(str("200").encode())
+                            self.__hisPubKey = encriptionHandler.AESdecrypt(key = AESkey, secret = self.__hisPubKey, byteObject = True)
+                            self.__hisPubKey = encriptionHandler.importRSApub(PEMfile = self.__hisPubKey)
+                            self.__clientSocket.sendall(str("200").encode())
                             return True
                         else:
-                            self.clientSocket.sendall(str("599").encode())
+                            self.__clientSocket.sendall(str("599").encode())
         except Exception:
             pass
             
-        self.logger.warning("Error occurred while negotiating RSA keys with " + str(self.address[0]) + " connection terminated for security reasons")
+        self.__logger.warning("Error occurred while negotiating RSA keys with " + str(self.__address[0]) + " connection terminated for security reasons")
         return False
     
     def __decryptMessage(self, AESsecret, RSAsecret, byteObject = False):
-        AESkey = encriptionHandler.RSAdecrypt(privkey = self.myPrivKey, secret = RSAsecret, skipDecoding = True)
+        AESkey = encriptionHandler.RSAdecrypt(privkey = self.__myPrivKey, secret = RSAsecret, skipDecoding = True)
         raw = encriptionHandler.AESdecrypt(key = AESkey, secret = AESsecret, byteObject = byteObject)
         return raw
 
     def __generateEncryptedMessage(self, raw, byteObject = False):
         AESkey = encriptionHandler.generateAES()
         AESsecret = encriptionHandler.AESencrypt(key = AESkey, raw = raw, byteObject = byteObject)
-        RSAsecret = encriptionHandler.RSAencrypt(pubkey = self.hisPubKey, raw = AESkey)
+        RSAsecret = encriptionHandler.RSAencrypt(pubkey = self.__hisPubKey, raw = AESkey)
         return (AESsecret, RSAsecret)
     
     def run(self):
@@ -143,48 +144,44 @@ class DataClient(threading.Thread):
         if result == False:
             self.disconnect()
         else:
-            while self.clientConnected == True:
+            while self.__clientConnected == True:
                 try:
-                    request = self.getMessage(sock = self.clientSocket)         # Get incoming request pt.1
-                    self.logger.debug("Richiesta in arrivo")
+                    request = self.getMessage(sock = self.__clientSocket)         # Get incoming request pt.1
                     if request != None and request != 0 and request != '' and request != str.encode(''):
                         RSAsecret = request                                     # First message of incoming request is the RSA secret
-                        self.sendMessage(sock = self.clientSocket, message = str("200").encode())          # Send ACK 1
-                        request = self.getMessage(sock = self.clientSocket)     #Get incoming request pt.2
+                        self.sendMessage(sock = self.__clientSocket, message = str("200").encode())          # Send ACK 1
+                        request = self.getMessage(sock = self.__clientSocket)     #Get incoming request pt.2
                         if request != None and request != 0 and request != '' and request != str.encode(''):
                             AESsecret = request                                 # Sencond message of incoming request is the AES secret
-                            self.sendMessage(sock = self.clientSocket, message = str("200").encode())      # Send ACK2
+                            self.sendMessage(sock = self.__clientSocket, message = str("200").encode())      # Send ACK2
                         else:
                             self.disconnect()
                             break
                     else:
                         self.disconnect()
                         break
-                except ConnectionResetError as x:
-                    self.logger.debug("Errore nella ricezione della richiesta: " + str(x))
+                except ConnectionResetError:
                     self.disconnect()
                     break
-                except ConnectionAbortedError as x:
-                    self.logger.debug("Errore nella ricezione della richiesta: " + str(x))
+                except ConnectionAbortedError:
                     self.disconnect()
                     break
-                except ConnectionError as x:
-                    self.logger.debug("Errore nella ricezione della richiesta: " + str(x))
+                except ConnectionError:
                     self.disconnect()
                     break
                 except Exception as test:
-                    self.logger.error("Error: Unknown comunication error occurred with client " + str(self.address[0]))
-                    self.logger.info(str(test))
+                    self.__logger.error("Error: Unknown comunication error occurred with client " + str(self.__address[0]))
+                    self.__logger.info(str(test))
                     continue
 
                 try:
                     request = self._DataClient__decryptMessage(AESsecret = AESsecret, RSAsecret = RSAsecret)
                     request = json.loads(request)
                 except json.JSONDecodeError:
-                    self.logger.warning("Error: Received corrupted request from host " + str(self.address[0]))
+                    self.__logger.warning("Error: Received corrupted request from host " + str(self.__address[0]))
                     continue
                 except Exception:
-                    self.logger.warning("Error: Received corrupted request from host " + str(self.address[0]))
+                    self.__logger.warning("Error: Received corrupted request from host " + str(self.__address[0]))
                     continue
 
                 try:
@@ -194,7 +191,7 @@ class DataClient(threading.Thread):
                             if request["RS"] == True:
                                 safeExit.optimizeSQL(reason = True, oneTime = True, lastTime = request["LT"])
 
-                            result = self.dataProxy.requestData(sensorNumber = request["SN"], dataType = request["DT"], firstTime = request["FT"], lastTime = request["LT"])
+                            result = self.__dataProxy.requestData(sensorNumber = request["SN"], dataType = request["DT"], firstTime = request["FT"], lastTime = request["LT"])
                             if result[0] == True:
                                 result = result[1]
                                 status = "200"
@@ -211,7 +208,7 @@ class DataClient(threading.Thread):
                         result = dict()
                         status = "599"
                 except Exception:
-                    self.logger.error("Error occurred while processing a request form  " + str(self.address[0]))
+                    self.__logger.error("Error occurred while processing a request form  " + str(self.__address[0]))
                     continue
 
                 try: 
@@ -219,19 +216,19 @@ class DataClient(threading.Thread):
                     status = status.encode()
                     (resultJSON, key) = self._DataClient__generateEncryptedMessage(raw = resultJSON)
                 except Exception:
-                    self.logger.error("Error occurred while encrypting an answer for " + str(self.address[0]))
+                    self.__logger.error("Error occurred while encrypting an answer for " + str(self.__address[0]))
                     continue
                 
                 try:
-                    self.sendMessage(sock = self.clientSocket, message = key)                   # Send RSA secret
-                    answer = self.getMessage(sock = self.clientSocket)                          # Get ACK 1
+                    self.sendMessage(sock = self.__clientSocket, message = key)                   # Send RSA secret
+                    answer = self.getMessage(sock = self.__clientSocket)                          # Get ACK 1
                     if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
                         if answer.decode() == "200":
-                            self.sendMessage(sock = self.clientSocket, message = resultJSON)    # Send AES secret
-                            answer = self.getMessage(sock = self.clientSocket)                  # Get ACK 2
+                            self.sendMessage(sock = self.__clientSocket, message = resultJSON)    # Send AES secret
+                            answer = self.getMessage(sock = self.__clientSocket)                  # Get ACK 2
                             if answer != None and answer != 0 and answer != '' and answer != str.encode(''):
                                 if answer.decode() == "200":
-                                    self.sendMessage(sock = self.clientSocket, message = status)    # Send ACK 3 (status)
+                                    self.sendMessage(sock = self.__clientSocket, message = status)    # Send ACK 3 (status)
                                 else:
                                     self.disconnect()
                                     break
@@ -244,25 +241,20 @@ class DataClient(threading.Thread):
                     else:
                         self.disconnect()
                         break
-                except ConnectionResetError as x:
-                    self.logger.debug("Errore nell'invio della risposta " + str(x))
+                except ConnectionResetError:
                     self.disconnect()
                     break
-                except ConnectionAbortedError as x:
-                    self.logger.debug("Errore nell'invio della risposta " + str(x))
+                except ConnectionAbortedError:
                     self.disconnect()
                     break
-                except ConnectionError as x:
-                    self.logger.debug("Errore nell'invio della risposta " + str(x))
+                except ConnectionError:
                     self.disconnect()
                     break
                 except Exception:
-                    self.logger.warning("Errore nell'invio della risposta " + str(x))
                     continue
-                self.logger.debug("Risposta inviata")
 
         
-        self.logger.info("Client " + str(self.address[0]) + " disconnected")
+        self.__logger.info("Client " + str(self.__address[0]) + " disconnected")
         return
     
     def sendMessage(self, sock, message):
@@ -312,6 +304,8 @@ class DataClient(threading.Thread):
                 raise ConnectionError
         return data   
         
+# This class handle a safe server shutdown.
+# This class also provide and handle the SQL optimization routine.
 class shutdownHandler():
     def __init__(self, mqttHandler, dataProxyHandler, dataServerListener):
         self.mqttHandler = mqttHandler
@@ -389,6 +383,7 @@ class shutdownHandler():
                 self.optimizingThread = threading.Timer(interval = 3600, function = self.optimizeSQL)
                 self.optimizingThread.start()
 
+# This method is called when a SIGTERM is received.
 def sysStop(signum, frame):
     safeExit.shutdown()
     quit()
@@ -464,7 +459,7 @@ if __name__ == "__main__":
             loggingFile = loggingFile + "DataServer.log"
         else:
             loggingFile = loggingFile + "/DataServer.log"
-        logging.basicConfig(filename = loggingFile, level = logging.DEBUG)
+        logging.basicConfig(filename = loggingFile, level = logging.INFO)
     else:
         print("Critical Error: No Log Path is provided by settings file! Unable to start")
         quit()

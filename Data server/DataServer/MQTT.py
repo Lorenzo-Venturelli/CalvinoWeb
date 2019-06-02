@@ -25,7 +25,7 @@ class MQTTclient(threading.Thread):
         self.dataProxy = dataProxy
         self.dataProxyLock = threading.Lock()
         self.__logger = logging.getLogger(name = "MQTT")
-        logging.basicConfig(filename = loggingFile, level = logging.DEBUG)
+        logging.basicConfig(filename = loggingFile, level = logging.INFO)
         threading.Thread.__init__(self, name = "MQTT Thread", daemon = True)
 
     def run(self):

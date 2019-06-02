@@ -18,7 +18,7 @@ class CalvinoDB():
         self.__summarizationOnGoing = threading.Event()
         self.__summarizationOnGoing.set()
         self.__logger = logging.getLogger(name = "SQL")
-        logging.basicConfig(filename = loggingFile, level = logging.DEBUG)
+        logging.basicConfig(filename = loggingFile, level = logging.INFO)
         try:
             self.db = SQL_lib.MsSQL(server = self.__dbAddress, database = self.__dbName, username = self.__dbUser, password = self.__dbPass, logger = self.__logger)
         except Exception as reason:
