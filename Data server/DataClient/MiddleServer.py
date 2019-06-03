@@ -4,6 +4,7 @@ import DataClient, WebSocket
 
 safeExit = None
 
+# This class handle Server shutdown
 class shutdownHandler():
     def __init__(self, negotiator, tornadoHandler):
         self.negotiator = negotiator
@@ -16,6 +17,7 @@ class shutdownHandler():
         self.tornadoHandler.join()
         return
 
+# This method is raised when a system SIGTERM is received.
 def sysStop(signum, frame):
     safeExit.shutdown()
     quit()

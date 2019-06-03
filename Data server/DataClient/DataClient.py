@@ -1,6 +1,9 @@
 import socket, json, threading, queue, logging, struct, time
 import encriptionHandler
 
+# This class handle connection with Data Server.
+# This class provide a software interface to send messages and get responses.
+# This class aslo implement the encrypthion background for handle comunication.
 class DataRequest(threading.Thread):
     def __init__(self, serverAddress, serverPort, syncEvent, loggingFile):
         self.serverAddress = serverAddress
@@ -226,6 +229,10 @@ class DataRequest(threading.Thread):
         except Exception:
             return False
 
+# This class handle connections and disconnections with Data Server
+# A connection attempt is done every minute until a connection is established.
+# This class also provide a software interface to allow other threads to talk with Data Server.
+# A new istance of Data Client is istanciated when the connection is established.
 class connectionNegotiator(threading.Thread):
     def __init__(self, serverAddress, serverPort, loggingFile):
         self.__serverAddress = serverAddress

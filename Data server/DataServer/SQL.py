@@ -6,7 +6,6 @@ from random import randint
 # This class provide method to execute SQL DB operations.
 # This class provide building query method and parsing method.
 # This class must be used through DataProxy interface to avodi errors.
-# For detailed informations about each method see documentation.
 class CalvinoDB():
     def __init__(self, databaseAddress, databaseName, user, password, loggingFile):
         self.__dbAddress = databaseAddress

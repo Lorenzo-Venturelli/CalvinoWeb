@@ -9,47 +9,46 @@ import re
 # This class handle connection with MQTT broker. This is an indipendent thread.
 # When is connected the main loop listen for incoming messages and handle them
 # using __messageCallback that is, as the name suggest, asynchronusly called.
-# For detailed information about each method see documentation.
 class MQTTclient(threading.Thread):
     def __init__(self, brokerAddress, username, password, syncEvents, dataProxy, loggingFile):
-        self.brokerAddress = brokerAddress
-        self.username = username
-        self.password = password
-        self.client = mqtt.Client(client_id = "MQTT-Modena", clean_session = True)
-        self.client.on_subscribe = self.__subscribeCallback
-        self.client.on_message = self.__messageCallback
-        self.client.username_pw_set(username = self.username, password = self.password)
-        self.keepListening = True
-        self.syncEvents = syncEvents
-        self.subscribeResult = None
-        self.dataProxy = dataProxy
-        self.dataProxyLock = threading.Lock()
+        self.__brokerAddress = brokerAddress
+        self.__username = username
+        self.__password = password
+        self.__client = mqtt.Client(client_id = "MQTT-Modena", clean_session = True)
+        self.__client.on_subscribe = self.__subscribeCallback
+        self.__client.on_message = self.__messageCallback
+        self.__client.username_pw_set(username = self.__username, password = self.__password)
+        self.__keepListening = True
+        self.__syncEvents = syncEvents
+        self.__subscribeResult = None
+        self.__dataProxy = dataProxy
+        self.__dataProxyLock = threading.Lock()
         self.__logger = logging.getLogger(name = "MQTT")
         logging.basicConfig(filename = loggingFile, level = logging.INFO)
         threading.Thread.__init__(self, name = "MQTT Thread", daemon = True)
 
     def run(self):
-        self.client.connect(self.brokerAddress)
-        self.client.loop_start()
+        self.__client.connect(self.__brokerAddress)
+        self.__client.loop_start()
         try:
-            self.subscribeResult = self.client.subscribe("/#")
+            self.__subscribeResult = self.__client.subscribe("/#")
         except Exception:
             self.__logger.critical("Errors occurr while subscribing to channel")
-            self.syncEvents[1].set()
+            self.__syncEvents[1].set()
             return
             
-        if self.subscribeResult == False:
-            self.syncEvents[1].set()
+        if self.__subscribeResult == False:
+            self.__syncEvents[1].set()
             return
             
-        self.syncEvents[0].set()
+        self.__syncEvents[0].set()
 
-        while self.keepListening == True:
+        while self.__keepListening == True:
             time.sleep(0.1)
         
         try:
-            self.client.loop_stop(force = True)
-            self.client.disconnect()
+            self.__client.loop_stop(force = True)
+            self.__client.disconnect()
         except Exception as reason:
             self.__logger.error("Error occured while stopping MQTT sub-Thread")
             self.__logger.info("Reason: " + str(reason))
@@ -59,7 +58,7 @@ class MQTTclient(threading.Thread):
         return
 
     def stop(self):
-        self.keepListening = False
+        self.__keepListening = False
 
 
     def __messageCallback(self, client, userdata, message):
@@ -76,7 +75,7 @@ class MQTTclient(threading.Thread):
                 sensorNumber = str(match.group(1))
                 dataType = str(match.group(2))
                 dataValue = str(message.payload.decode("utf-8"))
-                result = self.dataProxy.lastDataUpdate(sensorNumber = int(sensorNumber), dataType = dataType, dataValue = dataValue)
+                result = self.__dataProxy.lastDataUpdate(sensorNumber = int(sensorNumber), dataType = dataType, dataValue = dataValue)
                 if result[0] == True:
                     return
                 else:
@@ -94,10 +93,10 @@ class MQTTclient(threading.Thread):
         
 
     def __subscribeCallback(self, client, userdata, mid, granted_qos):
-        if self.subscribeResult[1] == mid:
-            self.subscribeResult = True
+        if self.__subscribeResult[1] == mid:
+            self.__subscribeResult = True
         else:
-            self.subscribeResult = False
+            self.__subscribeResult = False
 
 if __name__ == "__main__":
     print("Error: This program must be used as a module")

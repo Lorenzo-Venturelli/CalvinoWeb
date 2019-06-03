@@ -5,29 +5,28 @@ import SQL
 # This class provide a proxy interface between SQL handler class and others classes.
 # This class also provide automatic parsing processes for data in both direction to
 # avoid formal errors.
-# For detailed informations about each method see documentation.
 class dataProxy():
     def __init__(self, SQLProxy, syncEvents, lock, proxy, loggingFile):
-        self.SQLProxy = SQLProxy
-        self.lastData = dict()
-        self.syncEvents = syncEvents
+        self.__SQLProxy = SQLProxy
+        self.__lastData = dict()
+        self.__syncEvents = syncEvents
         self.__lastSumm = datetime.datetime.now()
         self.__logger = logging.getLogger(name = "DataProxy")
         logging.basicConfig(filename = loggingFile, level = logging.INFO)
 
         for i in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
-            self.lastData[i] = dict()
-            self.lastData[i]['pressione'] = None
-            self.lastData[i]['temperatura'] = None
-            self.lastData[i]['altitudine'] = None
-            self.lastData[i]['luce'] = None
+            self.__lastData[i] = dict()
+            self.__lastData[i]['pressione'] = None
+            self.__lastData[i]['temperatura'] = None
+            self.__lastData[i]['altitudine'] = None
+            self.__lastData[i]['luce'] = None
 
     def lastDataUpdate(self, sensorNumber, dataType, dataValue):   
-        if sensorNumber in self.lastData.keys():
-            if str(dataType) not in self.lastData[sensorNumber].keys():
+        if sensorNumber in self.__lastData.keys():
+            if str(dataType) not in self.__lastData[sensorNumber].keys():
                 return (False, 2)
             else:
-                self.lastData[sensorNumber][dataType] = dataValue
+                self.__lastData[sensorNumber][dataType] = dataValue
                 result = self.__DBinsert(sensorNumber = sensorNumber, dataType = dataType, dataValue = dataValue)
                 if result == False:
                     return (False, 3)
@@ -40,10 +39,10 @@ class dataProxy():
         if firstTime > lastTime:
             return(False, 1)
         else:
-            if sensorNumber not in self.lastData.keys():
+            if sensorNumber not in self.__lastData.keys():
                 return (False, 2)
             else:
-                if dataType not in self.lastData[sensorNumber].keys():
+                if dataType not in self.__lastData[sensorNumber].keys():
                     return (False, 3)
                 else:
                     result = self.__DBrequest(sensorNumber = sensorNumber, dataType = dataType, firstTime = firstTime, lastTime = lastTime)
@@ -67,14 +66,14 @@ class dataProxy():
             lastTime = str(match.group(1)) + ":00:00"
 
             try:
-                self.SQLProxy.notifySummarization(status = True)
-                for sensorNumber in self.lastData.keys():
-                    for dataType in self.lastData[sensorNumber].keys():
+                self.__SQLProxy.notifySummarization(status = True)
+                for sensorNumber in self.__lastData.keys():
+                    for dataType in self.__lastData[sensorNumber].keys():
                         result = [None, None]
                         attemps = 0
                         while result[0] != True and attemps < 3:
                             attemps = attemps + 1
-                            result = self.SQLProxy.summarize(sensorNumber = sensorNumber, dataType = dataType, firstTime = firstTime, lastTime = lastTime, skipCheck = True)
+                            result = self.__SQLProxy.summarize(sensorNumber = sensorNumber, dataType = dataType, firstTime = firstTime, lastTime = lastTime, skipCheck = True)
                             if result[0] == False:
                                 if result[1] == 1:
                                     self.__logger.warning("Impossible to summarize values if firstTime is bigger than lastTime")
@@ -88,7 +87,7 @@ class dataProxy():
                                     self.__logger.warning("Unexpected query error while inserting new summarized data")
                                 elif result[1] == 6:
                                     self.__logger.warning("Unexpected query error while while sumarizing data")
-                self.SQLProxy.notifySummarization(status = False)
+                self.__SQLProxy.notifySummarization(status = False)
                 self.__logger.info("Data optimized for interval " + str(firstTime) + " " + str(lastTime))
                 self.__lastSumm = datetime.datetime.now()
                 return True
@@ -99,13 +98,12 @@ class dataProxy():
             return False
 
     def __DBinsert(self, sensorNumber, dataType, dataValue):
-        result = self.SQLProxy.insert(sensorNumber = sensorNumber, dataType = dataType, value = dataValue, timestamp = None)
+        result = self.__SQLProxy.insert(sensorNumber = sensorNumber, dataType = dataType, value = dataValue, timestamp = None)
         return result
         
-
     def __DBrequest(self, sensorNumber, dataType, firstTime, lastTime):
-        if self.SQLProxy.waitForSummarization() == True:
-            result = self.SQLProxy.request(sensorNumber = sensorNumber, dataType = dataType, firstTime = firstTime, lastTime = lastTime)
+        if self.__SQLProxy.waitForSummarization() == True:
+            result = self.__SQLProxy.request(sensorNumber = sensorNumber, dataType = dataType, firstTime = firstTime, lastTime = lastTime)
             return result
         else:
             return False
