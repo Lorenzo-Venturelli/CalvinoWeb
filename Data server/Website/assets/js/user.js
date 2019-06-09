@@ -53,7 +53,6 @@ class Graph{
     }
 
     addNewSensor(sensorNumber){
-        console.log(sensorNumber)
         if(sensorNumber in this.graphData){
             return false;
         }
@@ -201,8 +200,14 @@ class Graph{
                 return false;
             }
             var tmp = [];
-            for(var xVal in value){
-                tmp.push(value[xVal]);
+            for(var xVal in this.graphXlabels){
+                console.log(value[this.graphXlabels[xVal]])
+                if(this.graphXlabels[xVal] in value){
+                    tmp.push(value[this.graphXlabels[xVal]]);
+                }
+                else{
+                    tmp.push(0);
+                }
             }
             if(this.addNewValues(sensorNumber, dataType, tmp) == false){
                 return false;
