@@ -41,7 +41,7 @@ class DataServerAccepter(threading.Thread):
                 try:
                     clientThread = DataClient(address = clientAddress, clientSocket = clientSocket, dataProxy = self.__dataProxy, dataProxyLock = self.__dataProxyLock, dataProxySyncEvent = self.__dataProxySyncEvent, logger = self.__logger)
                     clientThread.start()
-                    self.__connectedClient[str(clientAddress[0]) + ":" + str(clientAddress[1])] = clientThread
+                    self.__connectedClient[str(clientAddress[0])] = clientThread
                     self.__logger.info("Client " + str(clientAddress[0]) + " connected")
                 except Exception as reason:
                     self.__logger.error("Unhandled error occured while creating client thread for client " + str(clientAddress[0]))
@@ -59,7 +59,7 @@ class DataServerAccepter(threading.Thread):
     def __garbageCollector(self):
         deathClient = []
         for client in self.__connectedClient.keys():
-            if self.__connectedClient[client].__clientConnected == False:
+            if self.__connectedClient[client].clientConnected == False:
                 deathClient.append(client)
         
         for client in deathClient:
